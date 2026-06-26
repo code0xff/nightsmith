@@ -1,3 +1,4 @@
+import "./loadEnv.js"; // must be first: load .env before config/env reads
 import { generatePlan } from "./ai/planner.js";
 import { runPlan } from "./executor/runPlan.js";
 import { Runtime } from "./runtime/runtime.js";

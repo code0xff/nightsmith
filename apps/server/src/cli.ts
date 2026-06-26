@@ -1,3 +1,4 @@
+import "./loadEnv.js"; // must be first: load .env before config/env reads
 import { Command } from "commander";
 import { execa } from "execa";
 import { writeFileSync } from "node:fs";

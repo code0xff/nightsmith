@@ -107,6 +107,12 @@ export function AiProvider() {
         description="Choose how prompts become plans. Stored locally, never shared."
       >
         <div className="space-y-3">
+          {ai?.envManaged && (
+            <p className="rounded-md border border-warning/30 bg-warning/5 p-2 text-xs">
+              Provider is pinned by <code>BLACKSMITH_AI_PROVIDER</code> (currently{" "}
+              <span className="font-medium">{ai.provider}</span>). Unset it to change here.
+            </p>
+          )}
           <div className="space-y-1.5">
             {(
               [
@@ -134,7 +140,7 @@ export function AiProvider() {
                   type="radio"
                   name="provider"
                   checked={provider === opt.id}
-                  disabled={"disabled" in opt && opt.disabled}
+                  disabled={("disabled" in opt && opt.disabled) || ai?.envManaged}
                   onChange={() => setProvider(opt.id)}
                   className="mt-0.5 accent-foreground"
                 />

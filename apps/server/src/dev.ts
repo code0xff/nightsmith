@@ -1,3 +1,4 @@
+import "./loadEnv.js"; // must be first: load .env before config/env reads
 import { startServer } from "./server.js";
 
 // Entry point for `pnpm dev` (tsx watch). The web dev server proxies /api and

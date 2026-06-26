@@ -117,6 +117,8 @@ export const AiStatus = z.object({
   openaiConnected: z.boolean(),
   /** Whether the Codex CLI is installed (usable as a no-key fallback). */
   codexAvailable: z.boolean(),
+  /** Provider is pinned by BLACKSMITH_AI_PROVIDER; the UI can't override it. */
+  envManaged: z.boolean(),
   model: z.string(),
   providers: z.array(ProviderName),
 });

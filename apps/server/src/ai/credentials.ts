@@ -48,12 +48,23 @@ function write(config: StoredConfig): void {
   }
 }
 
-/** The active provider: stored choice → env override → mock. */
+function envProvider(): ProviderName | undefined {
+  const e = process.env.BLACKSMITH_AI_PROVIDER;
+  return e === "mock" || e === "openai" || e === "codex" ? e : undefined;
+}
+
+/**
+ * The active provider: env (BLACKSMITH_AI_PROVIDER) wins, then the stored
+ * choice, then mock. Env-first keeps config-as-code authoritative and matches
+ * how the OpenAI key resolves (env over stored).
+ */
 export function resolveProvider(): ProviderName {
-  const stored = read().provider;
-  if (stored) return stored;
-  const env = process.env.BLACKSMITH_AI_PROVIDER as ProviderName | undefined;
-  return env ?? "mock";
+  return envProvider() ?? read().provider ?? "mock";
+}
+
+/** Whether the provider is pinned by the environment (UI can't override it). */
+export function isProviderEnvManaged(): boolean {
+  return envProvider() !== undefined;
 }
 
 /** Resolve the OpenAI key: env (12-factor) wins, else the stored key. */

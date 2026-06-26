@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { AiConnectRequest, type AiStatus } from "@blacksmith/shared";
 import {
   isOpenAiConnected,
+  isProviderEnvManaged,
   resolveProvider,
   setAiConfig,
 } from "../ai/credentials.js";
@@ -15,6 +16,7 @@ async function status(): Promise<AiStatus> {
     provider: resolveProvider(),
     openaiConnected: isOpenAiConnected(),
     codexAvailable: await isCodexAvailable(),
+    envManaged: isProviderEnvManaged(),
     model: MODEL,
     providers: PROVIDER_NAMES as AiStatus["providers"],
   };
