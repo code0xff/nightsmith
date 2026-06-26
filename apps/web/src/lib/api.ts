@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   AiStatus,
   AnvilStatus,
+  ArtifactListResponse,
   ExecuteResponse,
   LocalnetActionResponse,
   PromptResponse,
@@ -10,6 +11,7 @@ import {
   type AiConnectRequest,
   type LocalnetAction,
   type Plan,
+  type UploadedArtifact,
 } from "@nightsmith/shared";
 
 export class ApiRequestError extends Error {
@@ -83,6 +85,15 @@ export const api = {
       method: "POST",
       headers: { "x-nightsmith-install-token": token },
     }),
+
+  getArtifacts: () => request("/api/artifacts", ArtifactListResponse),
+  uploadArtifact: (body: UploadedArtifact) =>
+    request("/api/artifacts", ArtifactListResponse, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteArtifact: (name: string) =>
+    request(`/api/artifacts/${encodeURIComponent(name)}`, OkResponse, { method: "DELETE" }),
 
   getAi: () => request("/api/ai", AiStatus),
   aiConnect: (body: AiConnectRequest) =>
