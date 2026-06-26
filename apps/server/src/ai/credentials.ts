@@ -9,7 +9,7 @@ import { dataDir, ensureDir } from "../utils/paths.js";
  * credential the user owns — it is never sent anywhere except OpenAI, never
  * logged, and never returned to the client.
  */
-export type ProviderName = "mock" | "openai" | "anthropic";
+export type ProviderName = "mock" | "openai" | "codex" | "anthropic";
 
 interface StoredConfig {
   provider?: ProviderName;

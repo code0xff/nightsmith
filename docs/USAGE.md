@@ -80,6 +80,16 @@ parser that needs no key or network. To use **OpenAI (ChatGPT)** instead:
   (env always wins over the stored key). Model: `BLACKSMITH_OPENAI_MODEL`
   (default `gpt-4o`).
 
+To use a **no-key** path, pick **Codex CLI** in the same dialog (enabled when
+`codex` is on your PATH). It runs `codex exec` non-interactively and reuses your
+existing Codex/ChatGPT login — no API key, no extra billing setup. Codex runs
+read-only, ephemeral, and in a throwaway working dir, so it acts as a pure plan
+generator.
+
+**Fallback:** providers degrade gracefully by availability — OpenAI (if a key is
+present) → Codex CLI (if installed) → the mock planner (always). The log console
+shows which provider produced each plan (e.g. "Plan generated via codex").
+
 The provider only ever produces a reviewable plan; the deterministic executor
 still runs it after validation and confirmation.
 

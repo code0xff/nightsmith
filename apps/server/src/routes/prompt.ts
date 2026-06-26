@@ -22,11 +22,14 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
       : runtime.getLastManifest();
 
     runtime.setExecution("planning", "Generating plan…");
-    const { plan, provider } = await generatePlan({
-      prompt: body.prompt,
-      previousManifest,
-      running: runtime.isRunning(),
-    });
+    const { plan, provider } = await generatePlan(
+      {
+        prompt: body.prompt,
+        previousManifest,
+        running: runtime.isRunning(),
+      },
+      (level, message) => runtime.log(level, message, "planner"),
+    );
     runtime.setExecution("awaiting-confirmation");
     runtime.log("info", `Plan generated via ${provider}: ${plan.summary}`, "planner");
 

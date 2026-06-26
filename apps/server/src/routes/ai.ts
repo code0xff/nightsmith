@@ -5,14 +5,16 @@ import {
   resolveProvider,
   setAiConfig,
 } from "../ai/credentials.js";
+import { isCodexAvailable } from "../ai/providers/codex.js";
 import { PROVIDER_NAMES } from "../ai/planner.js";
 
 const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-4o";
 
-function status(): AiStatus {
+async function status(): Promise<AiStatus> {
   return {
     provider: resolveProvider(),
     openaiConnected: isOpenAiConnected(),
+    codexAvailable: await isCodexAvailable(),
     model: MODEL,
     providers: PROVIDER_NAMES as AiStatus["providers"],
   };

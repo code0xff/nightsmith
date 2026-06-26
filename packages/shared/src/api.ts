@@ -108,13 +108,15 @@ export const SessionListResponse = z.object({
 export type SessionListResponse = z.infer<typeof SessionListResponse>;
 
 // AI provider configuration
-export const ProviderName = z.enum(["mock", "openai", "anthropic"]);
+export const ProviderName = z.enum(["mock", "openai", "codex", "anthropic"]);
 export type ProviderName = z.infer<typeof ProviderName>;
 
 export const AiStatus = z.object({
   provider: ProviderName,
   /** Whether an OpenAI key is available (env or stored). Never the key itself. */
   openaiConnected: z.boolean(),
+  /** Whether the Codex CLI is installed (usable as a no-key fallback). */
+  codexAvailable: z.boolean(),
   model: z.string(),
   providers: z.array(ProviderName),
 });

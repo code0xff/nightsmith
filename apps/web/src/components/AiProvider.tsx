@@ -18,6 +18,11 @@ function badgeFor(
       ? { variant: "success", label: "AI: openai" }
       : { variant: "warning", label: "AI: openai — connect" };
   }
+  if (ai.provider === "codex") {
+    return ai.codexAvailable
+      ? { variant: "success", label: "AI: codex" }
+      : { variant: "warning", label: "AI: codex — not found" };
+  }
   return { variant: "default", label: `AI: ${ai.provider}` };
 }
 
@@ -103,25 +108,39 @@ export function AiProvider() {
       >
         <div className="space-y-3">
           <div className="space-y-1.5">
-            {(["mock", "openai"] as const).map((p) => (
+            {(
+              [
+                { id: "mock", label: "Mock", desc: "Deterministic, offline. No key, no network." },
+                { id: "openai", label: "OpenAI (ChatGPT)", desc: "Uses the OpenAI API. Requires an API key (sk-…)." },
+                {
+                  id: "codex",
+                  label: "Codex CLI",
+                  desc: ai?.codexAvailable
+                    ? "Uses your local Codex login (ChatGPT) — no API key needed."
+                    : "Codex CLI not detected on PATH. Install it to use this option.",
+                  disabled: !ai?.codexAvailable,
+                },
+              ] as const
+            ).map((opt) => (
               <label
-                key={p}
-                className="flex cursor-pointer items-start gap-2 rounded-md border p-2 text-sm"
+                key={opt.id}
+                className={`flex items-start gap-2 rounded-md border p-2 text-sm ${
+                  "disabled" in opt && opt.disabled
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer"
+                }`}
               >
                 <input
                   type="radio"
                   name="provider"
-                  checked={provider === p}
-                  onChange={() => setProvider(p)}
+                  checked={provider === opt.id}
+                  disabled={"disabled" in opt && opt.disabled}
+                  onChange={() => setProvider(opt.id)}
                   className="mt-0.5 accent-foreground"
                 />
                 <span>
-                  <span className="font-medium">{p === "mock" ? "Mock" : "OpenAI (ChatGPT)"}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {p === "mock"
-                      ? "Deterministic, offline. No key, no network."
-                      : "Uses the OpenAI API. Requires an API key (sk-…)."}
-                  </span>
+                  <span className="font-medium">{opt.label}</span>
+                  <span className="block text-xs text-muted-foreground">{opt.desc}</span>
                 </span>
               </label>
             ))}
