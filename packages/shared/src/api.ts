@@ -136,6 +136,12 @@ export const AnvilStatus = z.object({
   installable: z.boolean(),
   /** The exact command an install will run (shown to the user for consent). */
   installCommand: z.string(),
+  /**
+   * Per-process token required (as `x-blacksmith-install-token`) to POST the
+   * install. Only a same-origin reader (the cockpit) can obtain it, so a
+   * cross-origin page can't trigger the install.
+   */
+  installToken: z.string(),
 });
 export type AnvilStatus = z.infer<typeof AnvilStatus>;
 

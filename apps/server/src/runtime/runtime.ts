@@ -68,6 +68,7 @@ export class Runtime {
   private lastSnapshotId: string | null = null;
   private lastManifestJson: string | null = null;
 
+  private installing = false;
   private state: WorldState = emptyWorldState();
   private readonly accounts = new Map<string, ResolvedAccount>();
   private readonly contracts = new Map<string, ResolvedContract>();
@@ -85,6 +86,14 @@ export class Runtime {
    */
   runExclusive<T>(fn: () => Promise<T>): Promise<T> {
     return this.mutex.runExclusive(fn);
+  }
+
+  isInstalling(): boolean {
+    return this.installing;
+  }
+
+  setInstalling(value: boolean): void {
+    this.installing = value;
   }
 
   getState(): WorldState {

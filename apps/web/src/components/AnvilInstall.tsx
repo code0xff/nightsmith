@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,14 +17,24 @@ export function AnvilInstall() {
   const setAnvil = useAppStore((s) => s.setAnvil);
   const [open, setOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const setBusy = useAppStore((s) => s.setBusy);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   if (!anvil || anvil.installed) return null;
 
   const install = async () => {
     setInstalling(true);
+    setBusy(true); // block other controls while Foundry installs
     toast("Installing Foundry…", { description: "Watch the log console for progress." });
     try {
-      const next = await api.installAnvil();
+      const next = await api.installAnvil(anvil.installToken);
+      if (!mounted.current) return;
       setAnvil(next);
       if (next.installed) {
         toast.success("Anvil installed");
@@ -33,11 +43,13 @@ export function AnvilInstall() {
         toast.error("Install finished but Anvil still not found");
       }
     } catch (err) {
+      if (!mounted.current) return;
       toast.error("Install failed", {
         description: err instanceof ApiRequestError ? err.message : String(err),
       });
     } finally {
-      setInstalling(false);
+      if (mounted.current) setInstalling(false);
+      setBusy(false);
     }
   };
 

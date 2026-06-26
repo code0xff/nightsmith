@@ -59,12 +59,15 @@ export async function installFoundry(onLog: InstallLog): Promise<void> {
   }
 
   try {
+    // Hardcoded pipeline (no user input); non-login shell so user rc files
+    // don't run as an unexpected side effect.
     onLog(`Running: ${FOUNDRY_INSTALL_COMMAND}`, "info");
-    await run("bash", ["-lc", FOUNDRY_INSTALL_COMMAND], onLog);
+    await run("bash", ["-c", FOUNDRY_INSTALL_COMMAND], onLog);
 
+    // Run foundryup directly — no shell, so no path interpolation/injection.
     const foundryup = join(foundryBinDir(), "foundryup");
     onLog("Running foundryup to download anvil, forge, and cast…", "info");
-    await run("bash", ["-lc", `"${foundryup}"`], onLog);
+    await run(foundryup, [], onLog);
   } catch (err) {
     throw new AppError(`Foundry install failed: ${errorMessage(err)}`, 500);
   }

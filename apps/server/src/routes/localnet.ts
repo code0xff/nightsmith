@@ -5,6 +5,7 @@ import {
   type LocalnetActionResponse,
   type WorldState,
 } from "@blacksmith/shared";
+import { AppError } from "../utils/errors.js";
 import type { Runtime } from "../runtime/runtime.js";
 
 /** A default local Anvil network for manual (non-manifest) control. */
@@ -20,6 +21,9 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
 
   app.post("/api/localnet", async (req): Promise<LocalnetActionResponse> => {
     const body = LocalnetActionRequest.parse(req.body);
+    if (runtime.isInstalling()) {
+      throw new AppError("Foundry is installing — try again shortly", 423);
+    }
 
     // Serialize against execution and other control actions (single Anvil owner).
     return runtime.runExclusive(async () => {

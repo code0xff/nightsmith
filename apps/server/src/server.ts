@@ -26,6 +26,26 @@ export async function buildServer(): Promise<BlacksmithServer> {
   const app = Fastify({ logger: false });
   const runtime = new Runtime();
 
+  // Reject requests whose Host isn't localhost — defends a localhost-bound
+  // server against DNS-rebinding (where an attacker domain resolves to
+  // 127.0.0.1 but the Host header is the attacker's domain).
+  const allowedHosts = new Set([
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "[::1]",
+    ...(process.env.BLACKSMITH_ALLOWED_HOSTS ?? "")
+      .split(",")
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  ]);
+  app.addHook("onRequest", async (req, reply) => {
+    const hostname = (req.headers.host ?? "").replace(/:\d+$/, "").toLowerCase();
+    if (!allowedHosts.has(hostname)) {
+      return reply.status(403).send({ error: "Host not allowed" });
+    }
+  });
+
   await app.register(fastifyWebsocket);
 
   app.setErrorHandler((err, _req, reply) => {

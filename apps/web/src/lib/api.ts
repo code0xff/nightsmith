@@ -28,10 +28,14 @@ async function request<S extends z.ZodTypeAny>(
   schema: S,
   init?: RequestInit,
 ): Promise<z.infer<S>> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
-  });
+  // Only declare a JSON content-type when we actually send a body — otherwise
+  // Fastify rejects a bodyless POST (e.g. install/disconnect/resume) as an
+  // "empty JSON body".
+  const headers: Record<string, string> = {
+    ...(init?.body != null ? { "content-type": "application/json" } : {}),
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  const res = await fetch(path, { ...init, headers });
   const text = await res.text();
   const body = text ? JSON.parse(text) : {};
   if (!res.ok) {
@@ -74,7 +78,11 @@ export const api = {
     request(`/api/sessions/${id}`, OkResponse, { method: "DELETE" }),
 
   getAnvil: () => request("/api/anvil", AnvilStatus),
-  installAnvil: () => request("/api/anvil/install", AnvilStatus, { method: "POST" }),
+  installAnvil: (token: string) =>
+    request("/api/anvil/install", AnvilStatus, {
+      method: "POST",
+      headers: { "x-blacksmith-install-token": token },
+    }),
 
   getAi: () => request("/api/ai", AiStatus),
   aiConnect: (body: AiConnectRequest) =>
