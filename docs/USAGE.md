@@ -111,13 +111,16 @@ still runs it after validation and confirmation.
 | Env var | Default | Purpose |
 | --- | --- | --- |
 | `NIGHTSMITH_PORT` | `4040` | Server/UI port |
+| `NIGHTSMITH_HOST` | `127.0.0.1` | Server bind address |
 | `NIGHTSMITH_ANVIL_PORT` | `8545` | Anvil RPC port |
 | `NIGHTSMITH_DATA_DIR` | `~/.nightsmith` | Session store location |
-| `NIGHTSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `anthropic` (anthropic is a stub) |
+| `NIGHTSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `codex` |
 | `OPENAI_API_KEY` | — | OpenAI key (overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
 | `NIGHTSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `NIGHTSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |
+| `NIGHTSMITH_ALLOWED_HOSTS` | — | Extra allowed `Host` values (comma-separated) beyond localhost |
+| `NIGHTSMITH_ENV_FILE` | `./.env` | Path to the auto-loaded env file |
 
 See [SAFETY.md](SAFETY.md) for the safety model and [MANIFEST.md](MANIFEST.md)
 for the manifest format.
