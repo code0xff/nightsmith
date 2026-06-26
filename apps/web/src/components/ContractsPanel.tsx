@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileCode2, Trash2, Upload } from "lucide-react";
+import { FileCode2, FolderOpen, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ArtifactSummary } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,26 @@ export function ContractsPanel() {
   const [json, setJson] = useState("");
   const [saving, setSaving] = useState(false);
   const mounted = useRef(true);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    const text = await file.text();
+    if (!mounted.current) return;
+    setJson(text);
+    if (!name.trim()) {
+      let guess = file.name.replace(/\.json$/i, "");
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed?.contractName === "string") guess = parsed.contractName;
+      } catch {
+        // not JSON yet; fall back to the filename
+      }
+      setName(guess.replace(/[^A-Za-z0-9_-]/g, ""));
+    }
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -140,6 +160,24 @@ export function ContractsPanel() {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={onFile}
+            />
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => fileRef.current?.click()}
+            >
+              <FolderOpen />
+              Choose .json file
+            </Button>
+            <span className="text-xs text-muted-foreground">or paste below</span>
+          </div>
           <Textarea
             aria-label="Compiled artifact JSON (abi + bytecode)"
             placeholder='{ "abi": [...], "bytecode": "0x..." }'

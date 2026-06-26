@@ -21,15 +21,21 @@ export function Dialog({
   const titleId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
 
+  // Keep a stable ref to onClose so the effect depends only on `open` — otherwise
+  // an inline onClose prop re-runs this on every render and steals focus from
+  // inputs on each keystroke.
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     panelRef.current?.focus();
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
