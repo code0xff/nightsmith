@@ -1,7 +1,8 @@
-import type { Abi } from "viem";
+import type { Abi, AbiParameter } from "viem";
 import { MockERC20 } from "@nightsmith/contracts";
-import type { MockErc20Def } from "@nightsmith/shared";
+import type { ArgValue, ArtifactContractDef, MockErc20Def } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
+import { coerceArgs } from "./args.js";
 
 const mockErc20Abi = MockERC20.abi as Abi;
 
@@ -43,6 +44,7 @@ export async function deployMockErc20(
     decimals: def.decimals,
     address,
     deployer,
+    abi: mockErc20Abi,
   });
   runtime.upsertContractState({
     id: def.id,
@@ -69,3 +71,66 @@ export async function deployMockErc20(
 }
 
 export const MockErc20AbiForReads = mockErc20Abi;
+
+/** Deploy a user-uploaded artifact with constructor args (no runtime solc). */
+export async function deployArtifact(
+  runtime: Runtime,
+  def: ArtifactContractDef,
+  deployer: string,
+  args: ArgValue[],
+): Promise<`0x${string}`> {
+  const wallet = runtime.walletFor(deployer);
+  const account = runtime.getAccount(deployer);
+  const publicClient = runtime.getPublicClient();
+  const abi = def.abi as unknown as Abi;
+
+  const ctor = abi.find((item) => (item as { type?: string }).type === "constructor") as
+    | { inputs?: readonly AbiParameter[] }
+    | undefined;
+  const coerced = coerceArgs(ctor?.inputs ?? [], args);
+
+  const hash = await wallet.deployContract({
+    abi,
+    bytecode: def.bytecode as `0x${string}`,
+    args: coerced,
+    account: account.account,
+    chain: runtime.getChain(),
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`Deployment of ${def.id} reverted`);
+  }
+  const address = receipt.contractAddress;
+  if (!address) {
+    throw new Error(`Deployment of ${def.id} produced no contract address`);
+  }
+
+  runtime.registerContract({
+    id: def.id,
+    kind: def.kind,
+    name: def.name,
+    symbol: "",
+    decimals: 0,
+    address,
+    deployer,
+    abi,
+  });
+  runtime.upsertContractState({
+    id: def.id,
+    kind: def.kind,
+    name: def.name,
+    symbol: "",
+    decimals: 0,
+    address,
+  });
+  runtime.addTransaction({
+    hash,
+    ts: new Date().toISOString(),
+    from: account.address,
+    fn: "deploy",
+    status: "success",
+    gasUsed: receipt.gasUsed.toString(),
+  });
+  runtime.log("success", `Deployed ${def.name} at ${address}`, "executor");
+  return address;
+}

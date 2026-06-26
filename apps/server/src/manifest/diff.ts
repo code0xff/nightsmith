@@ -50,7 +50,7 @@ export function diffManifests(
   }
 
   const assertKey = (a: WorldManifest["assertions"][number]) =>
-    `${a.account}:${a.contractId}`;
+    "account" in a ? `${a.account}:${a.contractId}` : `${a.function}:${a.contractId}`;
   const beforeAsserts = new Map(before.assertions.map((a) => [assertKey(a), a.expected]));
   for (const a of after.assertions) {
     const prev = beforeAsserts.get(assertKey(a));

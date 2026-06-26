@@ -78,7 +78,7 @@ export function buildManifest(params: WorldParams): WorldManifest {
   ];
 
   const actions: WorldManifest["actions"] = [
-    { type: "deployContract", contractId, deployer: DEPLOYER },
+    { type: "deployContract", contractId, deployer: DEPLOYER, args: [] },
   ];
   for (const a of params.accounts) {
     if (parseUnits(a.initial, params.token.decimals) > 0n) {
@@ -133,9 +133,10 @@ export function buildManifest(params: WorldParams): WorldManifest {
 /** Recover world parameters from an existing manifest (for modify/replay). */
 export function deriveParams(manifest: WorldManifest): WorldParams {
   const contract = manifest.contracts[0];
-  const token: TokenPreset = contract
-    ? { name: contract.name, symbol: contract.symbol, decimals: contract.decimals }
-    : { name: "Mock USDC", symbol: "USDC", decimals: 6 };
+  const token: TokenPreset =
+    contract && contract.kind === "MockERC20"
+      ? { name: contract.name, symbol: contract.symbol, decimals: contract.decimals }
+      : { name: "Mock USDC", symbol: "USDC", decimals: 6 };
 
   // Recipients come from the mint actions (captures both named and addresses).
   const minted = new Map<string, bigint>();

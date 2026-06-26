@@ -47,12 +47,13 @@ export function validateManifest(input: unknown): WorldManifest {
       requireAccount(action.from, where); // sender must be a signable named account
       requireRecipient(action.to, where);
     }
+    if (action.type === "call") requireAccount(action.from, where); // signer
   }
 
   for (const [i, assertion] of manifest.assertions.entries()) {
     const where = `assertions[${i}] (${assertion.type})`;
     requireContract(assertion.contractId, where);
-    requireRecipient(assertion.account, where);
+    if (assertion.type === "tokenBalance") requireRecipient(assertion.account, where);
   }
 
   // Duplicate ids/names are a determinism hazard.

@@ -1,4 +1,4 @@
-import type { Chain, PublicClient, WalletClient } from "viem";
+import type { Abi, Chain, PublicClient, WalletClient } from "viem";
 import type { HDAccount } from "viem/accounts";
 import {
   emptyWorldState,
@@ -54,6 +54,8 @@ interface ResolvedContract {
   address: `0x${string}`;
   /** Account name that deployed (and owns) the contract. */
   deployer: string;
+  /** ABI for reads/writes (MockERC20's, or the uploaded artifact's). */
+  abi: Abi;
 }
 
 /**

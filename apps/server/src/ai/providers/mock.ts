@@ -25,7 +25,15 @@ function describeAction(a: Action): string {
       return `Mint ${a.amount} ${a.contractId} → ${a.to}`;
     case "transfer":
       return `Transfer ${a.amount} ${a.contractId}: ${a.from} → ${a.to}`;
+    case "call":
+      return `Call ${a.contractId}.${a.function}() by ${a.from}`;
   }
+}
+
+/** Symbol of the first MockERC20 contract (mock only builds those). */
+function symbolOf(manifest: WorldManifest): string {
+  const c = manifest.contracts[0];
+  return c && c.kind === "MockERC20" ? c.symbol : "TOKEN";
 }
 
 function stepsFor(manifest: WorldManifest): string[] {
@@ -38,14 +46,16 @@ function stepsFor(manifest: WorldManifest): string[] {
 }
 
 function expectedChanges(manifest: WorldManifest): string[] {
-  return manifest.assertions.map((a) =>
-    a.type === "tokenBalance" ? `${a.account}: ${a.expected} ${manifest.contracts[0]?.symbol ?? ""}`.trim() : "",
-  ).filter(Boolean);
+  const symbol = symbolOf(manifest);
+  return manifest.assertions
+    .map((a) => (a.type === "tokenBalance" ? `${a.account}: ${a.expected} ${symbol}`.trim() : ""))
+    .filter(Boolean);
 }
 
 function assertionDescriptions(manifest: WorldManifest): string[] {
-  return manifest.assertions.map(
-    (a) => a.description ?? `${a.account} = ${a.expected}`,
+  return manifest.assertions.map((a) =>
+    a.description ??
+    ("account" in a ? `${a.account} = ${a.expected}` : `${a.function}() = ${a.expected}`),
   );
 }
 
@@ -55,7 +65,7 @@ function planFromManifest(
   manifest: WorldManifest,
   parts: { summary: string; assumptions: string[]; title: string; description: string },
 ): Plan {
-  const symbol = manifest.contracts[0]?.symbol ?? "TOKEN";
+  const symbol = symbolOf(manifest);
   return {
     intent,
     summary: parts.summary,

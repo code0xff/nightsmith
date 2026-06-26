@@ -1,6 +1,7 @@
 import type { Action, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
-import { deployMockErc20 } from "./contracts.js";
+import { callFunction } from "./calls.js";
+import { deployArtifact, deployMockErc20 } from "./contracts.js";
 import { mint, transfer } from "./tokens.js";
 
 /** Human-readable label for a manifest action (used in reports/preview). */
@@ -12,6 +13,8 @@ export function describeAction(action: Action): string {
       return `Mint ${action.amount} → ${action.to} (${action.contractId})`;
     case "transfer":
       return `Transfer ${action.amount}: ${action.from} → ${action.to} (${action.contractId})`;
+    case "call":
+      return `Call ${action.contractId}.${action.function}(${action.args.length ? "…" : ""}) by ${action.from}`;
   }
 }
 
@@ -31,13 +34,20 @@ export async function runAction(
         await deployMockErc20(runtime, def, action.deployer);
         return;
       }
-      throw new Error(`Unsupported contract kind for deploy: ${def.kind}`);
+      if (def.kind === "artifact") {
+        await deployArtifact(runtime, def, action.deployer, action.args);
+        return;
+      }
+      throw new Error(`Unsupported contract kind for deploy: ${(def as { kind: string }).kind}`);
     }
     case "mint":
       await mint(runtime, action.contractId, action.to, action.amount);
       return;
     case "transfer":
       await transfer(runtime, action.contractId, action.from, action.to, action.amount);
+      return;
+    case "call":
+      await callFunction(runtime, action);
       return;
   }
 }
