@@ -1,8 +1,13 @@
 import { Command } from "commander";
 import { execa } from "execa";
+import { writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { DEFAULT_ANVIL_PORT, SERVER_HOST, SERVER_PORT } from "./config.js";
 import { startServer } from "./server.js";
+import { Runtime } from "./runtime/runtime.js";
+import { runSavedManifest } from "./executor/runPlan.js";
+import { getSession } from "./sessions/store.js";
+import { errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
 const program = new Command();
@@ -17,6 +22,63 @@ program
   .description("Start the Blacksmith server and web cockpit")
   .action(async () => {
     await startServer();
+  });
+
+program
+  .command("stop")
+  .description("Stop the running localnet (via the local server)")
+  .action(async () => {
+    try {
+      const res = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/api/localnet`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "stop" }),
+      });
+      if (!res.ok) throw new Error(`server returned ${res.status}`);
+      logger.info("Localnet stopped");
+    } catch (err) {
+      logger.error(
+        `Could not reach the Blacksmith server on port ${SERVER_PORT}. Is \`blacksmith serve\` running? (${errorMessage(err)})`,
+      );
+      process.exit(1);
+    }
+  });
+
+program
+  .command("export")
+  .description("Export a session's manifest as JSON")
+  .argument("<sessionId>", "session id to export")
+  .option("-o, --out <file>", "write to a file instead of stdout")
+  .action((sessionId: string, opts: { out?: string }) => {
+    const { manifest } = getSession(sessionId);
+    const json = JSON.stringify(manifest, null, 2) + "\n";
+    if (opts.out) {
+      writeFileSync(opts.out, json);
+      logger.info(`Exported manifest to ${opts.out}`);
+    } else {
+      process.stdout.write(json);
+    }
+  });
+
+program
+  .command("replay")
+  .description("Replay a saved session headlessly (no browser)")
+  .argument("<sessionId>", "session id to replay")
+  .action(async (sessionId: string) => {
+    const { manifest } = getSession(sessionId);
+    const runtime = new Runtime();
+    runtime.bus.subscribe((e) => {
+      if (e.type === "log" && e.entry.level !== "debug") {
+        logger.info(`[${e.entry.level}] ${e.entry.message}`);
+      }
+    });
+    try {
+      const res = await runSavedManifest(runtime, manifest);
+      logger.info(`Replay ${res.report?.status ?? "finished"}`);
+      process.exitCode = res.report?.status === "completed" ? 0 : 1;
+    } finally {
+      await runtime.stopLocalnet().catch(() => {});
+    }
   });
 
 program
@@ -38,8 +100,7 @@ program
       ["anvil", DEFAULT_ANVIL_PORT],
     ] as const) {
       const free = await portIsFree(port);
-      if (free) logger.info(`port ${port} (${label}): available`);
-      else logger.warn(`port ${port} (${label}): in use`);
+      logger.info(`port ${port} (${label}): ${free ? "available" : "in use"}`);
     }
     if (!ok) {
       logger.error("Some tools are missing. Install Foundry: https://book.getfoundry.sh/");
@@ -47,20 +108,6 @@ program
     }
     logger.info("doctor: all required tools present");
   });
-
-// Filled out in a later phase; declared now so `--help` lists them.
-program
-  .command("stop")
-  .description("Stop a running localnet (coming soon)")
-  .action(() => logger.warn("`blacksmith stop` is not implemented yet"));
-program
-  .command("export")
-  .description("Export a session manifest (coming soon)")
-  .action(() => logger.warn("`blacksmith export` is not implemented yet"));
-program
-  .command("replay")
-  .description("Replay a saved session (coming soon)")
-  .action(() => logger.warn("`blacksmith replay` is not implemented yet"));
 
 async function toolVersion(tool: string): Promise<string | null> {
   try {
@@ -81,6 +128,6 @@ function portIsFree(port: number): Promise<boolean> {
 }
 
 program.parseAsync().catch((err) => {
-  logger.error(String(err));
+  logger.error(errorMessage(err));
   process.exit(1);
 });
