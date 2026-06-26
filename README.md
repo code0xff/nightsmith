@@ -43,6 +43,7 @@ pnpm demo
 - [docs/USAGE.md](docs/USAGE.md) — install, run, prompts, CLI, dev, configuration
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layers and data flow
 - [docs/MANIFEST.md](docs/MANIFEST.md) — the World manifest format
+- [docs/CUSTOM_CONTRACTS.md](docs/CUSTOM_CONTRACTS.md) — upload & deploy your own contracts
 - [docs/SAFETY.md](docs/SAFETY.md) — the safety model
 - [CLAUDE.md](CLAUDE.md) — working guidance for contributors and agents
 

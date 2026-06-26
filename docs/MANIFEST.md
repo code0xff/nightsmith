@@ -73,6 +73,13 @@ Same manifest → same world, every time.
   whose actions/assertions reference unknown accounts or contracts, or that have
   duplicate names/ids.
 
+## Custom contracts
+
+Beyond `MockERC20`, a contract can be `{ "kind": "artifact", "name": "<uploaded name>" }`
+(a user-uploaded ABI + bytecode, filled in server-side). Deploy it with
+constructor `args`, drive it with `call` actions, and verify with `callResult`
+assertions. See [CUSTOM_CONTRACTS.md](CUSTOM_CONTRACTS.md).
+
 ## Extending
 
 Both `contracts` (`kind`) and `actions`/`assertions` (`type`) are zod
