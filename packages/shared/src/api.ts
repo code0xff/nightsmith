@@ -153,7 +153,10 @@ export type AnvilStatus = z.infer<typeof AnvilStatus>;
 export const UploadedArtifact = z.object({
   name: z.string().min(1).max(64),
   abi: z.array(z.record(z.string(), z.unknown())).min(1),
-  bytecode: HexString,
+  /** Creation bytecode — must be non-empty (not just "0x" / runtime bytecode). */
+  bytecode: HexString.refine((b) => b.length > 2, {
+    message: "creation bytecode must not be empty",
+  }),
 });
 export type UploadedArtifact = z.infer<typeof UploadedArtifact>;
 

@@ -27,7 +27,11 @@ function coerceArg(param: AbiParameter, value: ArgValue): unknown {
     return value.map((v) => coerceArg(element, v));
   }
   if (type === "bool") {
-    return typeof value === "boolean" ? value : String(value).toLowerCase() === "true";
+    if (typeof value === "boolean") return value;
+    const s = String(value).toLowerCase();
+    if (s === "true") return true;
+    if (s === "false") return false;
+    throw new Error(`arg "${param.name || type}": expected a bool (true/false), got "${value}"`);
   }
   if (type.startsWith("uint") || type.startsWith("int")) {
     return BigInt(String(value));

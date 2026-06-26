@@ -13,11 +13,14 @@ import { api, ApiRequestError } from "@/lib/api";
 function parseArtifact(json: string): { abi: unknown[]; bytecode: string } {
   const parsed = JSON.parse(json);
   const abi = Array.isArray(parsed) ? parsed : parsed.abi;
-  let bytecode = parsed?.bytecode ?? parsed?.deployedBytecode;
-  if (bytecode && typeof bytecode === "object") bytecode = bytecode.object ?? bytecode.bytecode;
+  // Foundry nests creation bytecode under bytecode.object; Hardhat uses a string.
+  let bytecode = parsed?.bytecode;
+  if (bytecode && typeof bytecode === "object") bytecode = bytecode.object;
   if (!Array.isArray(abi)) throw new Error("artifact JSON has no `abi` array");
-  if (typeof bytecode !== "string" || !bytecode.startsWith("0x")) {
-    throw new Error("artifact JSON has no 0x `bytecode`");
+  if (typeof bytecode !== "string" || !/^0x[0-9a-fA-F]+$/.test(bytecode) || bytecode.length <= 2) {
+    throw new Error(
+      "artifact has no usable creation `bytecode` (deployedBytecode is runtime code and can't be deployed)",
+    );
   }
   return { abi, bytecode };
 }
@@ -52,6 +55,7 @@ export function ContractsPanel() {
     try {
       const { abi, bytecode } = parseArtifact(json);
       const next = await api.uploadArtifact({ name: name.trim(), abi: abi as never, bytecode });
+      if (!mounted.current) return;
       setArtifacts(next.artifacts);
       toast.success("Contract uploaded", { description: name.trim() });
       setOpen(false);
@@ -62,7 +66,7 @@ export function ContractsPanel() {
         description: err instanceof ApiRequestError ? err.message : String(err),
       });
     } finally {
-      setSaving(false);
+      if (mounted.current) setSaving(false);
     }
   };
 
@@ -131,11 +135,13 @@ export function ContractsPanel() {
       >
         <div className="space-y-2">
           <Input
+            aria-label="Contract name"
             placeholder="Name (e.g. MyVault)"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Textarea
+            aria-label="Compiled artifact JSON (abi + bytecode)"
             placeholder='{ "abi": [...], "bytecode": "0x..." }'
             value={json}
             onChange={(e) => setJson(e.target.value)}

@@ -48,6 +48,11 @@ export async function callFunction(runtime: Runtime, action: CallAction): Promis
   runtime.log("success", `Called ${action.function}() on ${action.contractId} (from ${action.from})`, "executor");
 }
 
+/** The (single, non-overloaded) ABI function entry for a contract — for typing results. */
+export function functionAbi(runtime: Runtime, contractId: string, name: string): AbiFunction {
+  return abiFunction(runtime.getContract(contractId).abi, name);
+}
+
 /** Read a view/pure function and return its raw result. */
 export async function readFunction(
   runtime: Runtime,
