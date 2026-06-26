@@ -1,8 +1,13 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import fastifyWebsocket from "@fastify/websocket";
 import { ZodError } from "zod";
 import { SERVER_HOST, SERVER_PORT } from "./config.js";
 import { Runtime } from "./runtime/runtime.js";
 import { registerLocalnetRoutes } from "./routes/localnet.js";
+import { registerPromptRoutes } from "./routes/prompt.js";
+import { registerExecuteRoutes } from "./routes/execute.js";
+import { registerSessionRoutes } from "./routes/sessions.js";
+import { registerWebSocket } from "./ws/stream.js";
 import { AppError, errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
@@ -12,9 +17,11 @@ export interface BlacksmithServer {
 }
 
 /** Build the Fastify app and runtime without listening (useful for tests). */
-export function buildServer(): BlacksmithServer {
+export async function buildServer(): Promise<BlacksmithServer> {
   const app = Fastify({ logger: false });
   const runtime = new Runtime();
+
+  await app.register(fastifyWebsocket);
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ZodError) {
@@ -39,14 +46,18 @@ export function buildServer(): BlacksmithServer {
     running: runtime.isRunning(),
   }));
 
+  registerWebSocket(app, runtime);
   registerLocalnetRoutes(app, runtime);
+  registerPromptRoutes(app, runtime);
+  registerExecuteRoutes(app, runtime);
+  registerSessionRoutes(app);
 
   return { app, runtime };
 }
 
 /** Build and start the server, returning the handle for graceful shutdown. */
 export async function startServer(): Promise<BlacksmithServer> {
-  const server = buildServer();
+  const server = await buildServer();
   await server.app.listen({ port: SERVER_PORT, host: SERVER_HOST });
   logger.info(`Blacksmith cockpit on http://${SERVER_HOST}:${SERVER_PORT}`);
 

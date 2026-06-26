@@ -11,6 +11,7 @@ import {
   type ScenarioState,
   type TokenBalance,
   type TxRecord,
+  type WorldManifest,
   type WorldState,
 } from "@blacksmith/shared";
 import { AnvilProcess } from "../anvil/processManager.js";
@@ -57,6 +58,7 @@ export class Runtime {
   private publicClient: PublicClient | null = null;
   private mnemonic = ANVIL_MNEMONIC;
   private lastSnapshotId: string | null = null;
+  private lastManifestJson: string | null = null;
 
   private state: WorldState = emptyWorldState();
   private readonly accounts = new Map<string, ResolvedAccount>();
@@ -71,6 +73,17 @@ export class Runtime {
 
   getState(): WorldState {
     return this.state;
+  }
+
+  /** Remember the most recently executed manifest (for modify/replay). */
+  setLastManifest(manifest: WorldManifest): void {
+    this.lastManifestJson = JSON.stringify(manifest);
+  }
+
+  getLastManifest(): WorldManifest | null {
+    return this.lastManifestJson
+      ? (JSON.parse(this.lastManifestJson) as WorldManifest)
+      : null;
   }
 
   isRunning(): boolean {
