@@ -29,3 +29,24 @@ export const Identifier = z
   .max(64)
   .regex(/^[A-Za-z0-9_-]+$/, "use letters, numbers, _ or -");
 export type Identifier = z.infer<typeof Identifier>;
+
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+/** True when a reference is a literal 0x address (vs. a named account). */
+export function isAddress(ref: string): ref is `0x${string}` {
+  return ADDRESS_RE.test(ref);
+}
+
+/**
+ * A reference to an account: either a named account (must start with a letter,
+ * e.g. "Alice") or a literal 20-byte 0x address. The leading-letter rule keeps
+ * a hex address from being misread as a name.
+ */
+export const AccountRef = z
+  .string()
+  .min(1)
+  .refine((s) => ADDRESS_RE.test(s) || NAME_RE.test(s), {
+    message: "must be an account name (letter-leading) or a 0x address",
+  });
+export type AccountRef = z.infer<typeof AccountRef>;

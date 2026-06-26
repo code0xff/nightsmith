@@ -9,12 +9,11 @@ export async function readTokenBalanceRaw(
   accountName: string,
 ): Promise<bigint> {
   const contract = runtime.getContract(contractId);
-  const account = runtime.getAccount(accountName);
   const balance = await runtime.getPublicClient().readContract({
     address: contract.address,
     abi: MockErc20AbiForReads,
     functionName: "balanceOf",
-    args: [account.address],
+    args: [runtime.resolveAddress(accountName)],
   });
   return balance as bigint;
 }
@@ -42,7 +41,7 @@ export async function mint(
   amount: string,
 ): Promise<void> {
   const contract = runtime.getContract(contractId);
-  const to = runtime.getAccount(toName);
+  const toAddress = runtime.resolveAddress(toName);
   const caller = runtime.getAccount(contract.deployer);
   const wallet = runtime.walletFor(contract.deployer);
 
@@ -50,7 +49,7 @@ export async function mint(
     address: contract.address,
     abi: MockErc20AbiForReads,
     functionName: "mint",
-    args: [to.address, toTokenUnits(amount, contract.decimals)],
+    args: [toAddress, toTokenUnits(amount, contract.decimals)],
     account: caller.account,
     chain: runtime.getChain(),
   });
@@ -85,14 +84,14 @@ export async function transfer(
 ): Promise<void> {
   const contract = runtime.getContract(contractId);
   const from = runtime.getAccount(fromName);
-  const to = runtime.getAccount(toName);
+  const toAddress = runtime.resolveAddress(toName);
   const wallet = runtime.walletFor(fromName);
 
   const hash = await wallet.writeContract({
     address: contract.address,
     abi: MockErc20AbiForReads,
     functionName: "transfer",
-    args: [to.address, toTokenUnits(amount, contract.decimals)],
+    args: [toAddress, toTokenUnits(amount, contract.decimals)],
     account: from.account,
     chain: runtime.getChain(),
   });

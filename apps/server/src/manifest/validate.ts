@@ -1,4 +1,4 @@
-import { parseManifest, type WorldManifest } from "@nightsmith/shared";
+import { isAddress, parseManifest, type WorldManifest } from "@nightsmith/shared";
 import { AppError } from "../utils/errors.js";
 
 /**
@@ -19,22 +19,27 @@ export function validateManifest(input: unknown): WorldManifest {
   const requireContract = (id: string, where: string) => {
     if (!contractIds.has(id)) problems.push(`${where}: unknown contract "${id}"`);
   };
+  // A recipient/assertion target may be a literal 0x address; only named refs
+  // need to exist in accounts[].
+  const requireRecipient = (ref: string, where: string) => {
+    if (!isAddress(ref)) requireAccount(ref, where);
+  };
 
   for (const [i, action] of manifest.actions.entries()) {
     const where = `actions[${i}] (${action.type})`;
     requireContract(action.contractId, where);
     if (action.type === "deployContract") requireAccount(action.deployer, where);
-    if (action.type === "mint") requireAccount(action.to, where);
+    if (action.type === "mint") requireRecipient(action.to, where);
     if (action.type === "transfer") {
-      requireAccount(action.from, where);
-      requireAccount(action.to, where);
+      requireAccount(action.from, where); // sender must be a signable named account
+      requireRecipient(action.to, where);
     }
   }
 
   for (const [i, assertion] of manifest.assertions.entries()) {
     const where = `assertions[${i}] (${assertion.type})`;
     requireContract(assertion.contractId, where);
-    requireAccount(assertion.account, where);
+    requireRecipient(assertion.account, where);
   }
 
   // Duplicate ids/names are a determinism hazard.

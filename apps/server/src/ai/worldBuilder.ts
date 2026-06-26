@@ -1,5 +1,6 @@
 import { formatUnits, parseUnits } from "viem";
 import {
+  isAddress,
   MANIFEST_VERSION,
   NetworkConfig,
   type Assertion,
@@ -10,43 +11,58 @@ import type { TokenPreset } from "./parse.js";
 export interface WorldParams {
   name: string;
   token: TokenPreset;
-  /** Named accounts with their initial token balance (decimal string). */
-  accounts: Array<{ name: string; initial: string }>;
+  /** Recipients with their initial token balance. `ref` is a name or 0x address. */
+  accounts: Array<{ ref: string; initial: string }>;
+  /** Transfer: `from` is always a named account; `to` may be a name or address. */
   transfer: { from: string; to: string; amount: string } | null;
 }
 
 const DEPLOYER = "deployer";
 
-/** Ordered, de-duplicated list of named (non-deployer) accounts. */
+/** Ordered, de-duplicated NAMED accounts (addresses get no AccountDef). */
 function namedAccounts(params: WorldParams): string[] {
   const order: string[] = [];
   const seen = new Set<string>([DEPLOYER]);
-  const push = (n: string) => {
-    if (!seen.has(n)) {
-      seen.add(n);
-      order.push(n);
-    }
+  const push = (ref: string) => {
+    if (isAddress(ref) || seen.has(ref)) return;
+    seen.add(ref);
+    order.push(ref);
   };
-  for (const a of params.accounts) push(a.name);
+  for (const a of params.accounts) push(a.ref);
   if (params.transfer) {
-    push(params.transfer.from);
+    push(params.transfer.from); // sender must be a named, signable account
     push(params.transfer.to);
   }
   return order;
 }
 
-/** Simulate final token balances (base units) from initials + transfer. */
+/** Every recipient/participant ref (names AND addresses), in order. */
+function allRefs(params: WorldParams): string[] {
+  const order: string[] = [];
+  const seen = new Set<string>();
+  const push = (ref: string) => {
+    if (!seen.has(ref)) {
+      seen.add(ref);
+      order.push(ref);
+    }
+  };
+  for (const a of params.accounts) push(a.ref);
+  if (params.transfer) push(params.transfer.to);
+  return order;
+}
+
+/** Simulate final token balances (base units) keyed by ref (name or address). */
 function simulate(params: WorldParams): Map<string, bigint> {
   const d = params.token.decimals;
   const bal = new Map<string, bigint>();
-  for (const name of namedAccounts(params)) bal.set(name, 0n);
-  for (const a of params.accounts) {
-    bal.set(a.name, (bal.get(a.name) ?? 0n) + parseUnits(a.initial, d));
-  }
+  const add = (ref: string, delta: bigint) =>
+    bal.set(ref, (bal.get(ref) ?? 0n) + delta);
+  for (const ref of allRefs(params)) bal.set(ref, 0n);
+  for (const a of params.accounts) add(a.ref, parseUnits(a.initial, d));
   if (params.transfer) {
     const amt = parseUnits(params.transfer.amount, d);
-    bal.set(params.transfer.from, (bal.get(params.transfer.from) ?? 0n) - amt);
-    bal.set(params.transfer.to, (bal.get(params.transfer.to) ?? 0n) + amt);
+    add(params.transfer.from, -amt);
+    add(params.transfer.to, amt);
   }
   return bal;
 }
@@ -66,7 +82,7 @@ export function buildManifest(params: WorldParams): WorldManifest {
   ];
   for (const a of params.accounts) {
     if (parseUnits(a.initial, params.token.decimals) > 0n) {
-      actions.push({ type: "mint", contractId, to: a.name, amount: a.initial });
+      actions.push({ type: "mint", contractId, to: a.ref, amount: a.initial });
     }
   }
   if (params.transfer) {
@@ -81,15 +97,16 @@ export function buildManifest(params: WorldParams): WorldManifest {
 
   const finals = simulate(params);
   const assertions: Assertion[] = [];
-  for (const name of named) {
-    const raw = finals.get(name) ?? 0n;
+  for (const ref of allRefs(params)) {
+    const raw = finals.get(ref) ?? 0n;
     if (raw < 0n) continue; // impossible world; executor will surface the revert
+    const human = formatUnits(raw, params.token.decimals);
     assertions.push({
       type: "tokenBalance",
       contractId,
-      account: name,
-      expected: formatUnits(raw, params.token.decimals),
-      description: `${name} holds ${formatUnits(raw, params.token.decimals)} ${params.token.symbol}`,
+      account: ref,
+      expected: human,
+      description: `${ref} holds ${human} ${params.token.symbol}`,
     });
   }
 
@@ -120,6 +137,7 @@ export function deriveParams(manifest: WorldManifest): WorldParams {
     ? { name: contract.name, symbol: contract.symbol, decimals: contract.decimals }
     : { name: "Mock USDC", symbol: "USDC", decimals: 6 };
 
+  // Recipients come from the mint actions (captures both named and addresses).
   const minted = new Map<string, bigint>();
   for (const action of manifest.actions) {
     if (action.type === "mint") {
@@ -129,12 +147,10 @@ export function deriveParams(manifest: WorldManifest): WorldParams {
       );
     }
   }
-  const accounts = manifest.accounts
-    .filter((a) => a.name !== DEPLOYER)
-    .map((a) => ({
-      name: a.name,
-      initial: formatUnits(minted.get(a.name) ?? 0n, token.decimals),
-    }));
+  const accounts = [...minted.entries()].map(([ref, raw]) => ({
+    ref,
+    initial: formatUnits(raw, token.decimals),
+  }));
 
   const transferAction = manifest.actions.find((a) => a.type === "transfer");
   const transfer =

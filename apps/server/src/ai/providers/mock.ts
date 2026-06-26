@@ -74,8 +74,8 @@ function planFromManifest(
 function demoDefaults(): { accounts: WorldParams["accounts"]; transfer: WorldParams["transfer"]; assumed: boolean } {
   return {
     accounts: [
-      { name: "Alice", initial: "1000" },
-      { name: "Bob", initial: "100" },
+      { ref: "Alice", initial: "1000" },
+      { ref: "Bob", initial: "100" },
     ],
     transfer: { from: "Alice", to: "Bob", amount: "10" },
     assumed: true,
@@ -85,7 +85,7 @@ function demoDefaults(): { accounts: WorldParams["accounts"]; transfer: WorldPar
 function createWorldPlan(prompt: string): Plan {
   const token = parseToken(prompt);
   let accounts: WorldParams["accounts"] = parseBalances(prompt).map((b) => ({
-    name: b.name,
+    ref: b.ref,
     initial: b.amount,
   }));
   let transfer = parseTransfer(prompt);
@@ -113,7 +113,7 @@ function createWorldPlan(prompt: string): Plan {
 
   const summary = transfer
     ? `Create a local ${token.symbol} world: fund ${accounts
-        .map((a) => `${a.name} (${a.initial})`)
+        .map((a) => `${a.ref} (${a.initial})`)
         .join(", ")}, then transfer ${transfer.amount} ${token.symbol} from ${transfer.from} to ${transfer.to} and verify final balances.`
     : `Create a local ${token.symbol} world and fund the named accounts.`;
 
@@ -132,10 +132,10 @@ function modifyWorldPlan(prompt: string, previous: WorldManifest): Plan {
   const assumptions: string[] = [];
 
   if (change) {
-    const existing = params.accounts.find((a) => a.name === change.name);
+    const existing = params.accounts.find((a) => a.ref === change.ref);
     if (existing) existing.initial = change.amount;
-    else params.accounts.push({ name: change.name, initial: change.amount });
-    assumptions.push(`Set ${change.name}'s initial balance to ${change.amount}.`);
+    else params.accounts.push({ ref: change.ref, initial: change.amount });
+    assumptions.push(`Set ${change.ref}'s initial balance to ${change.amount}.`);
   }
   if (newTransfer) {
     params.transfer = newTransfer;

@@ -2,6 +2,7 @@ import type { Chain, PublicClient, WalletClient } from "viem";
 import type { HDAccount } from "viem/accounts";
 import {
   emptyWorldState,
+  isAddress,
   type AccountState,
   type ContractState,
   type ExecutionStatus,
@@ -179,6 +180,14 @@ export class Runtime {
     const a = this.accounts.get(name);
     if (!a) throw new AppError(`Unknown account "${name}"`, 400);
     return a;
+  }
+
+  /**
+   * Resolve a reference (named account or literal 0x address) to an address.
+   * Use for recipients / balance reads; signers must use getAccount (need a key).
+   */
+  resolveAddress(ref: string): `0x${string}` {
+    return isAddress(ref) ? ref : this.getAccount(ref).address;
   }
 
   registerContract(c: ResolvedContract): void {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DecimalAmount, Identifier } from "./types.js";
+import { AccountRef, DecimalAmount, Identifier } from "./types.js";
 
 /**
  * The World manifest is Nightsmith's internal source of truth. It fully and
@@ -66,15 +66,18 @@ export const DeployContractAction = z.object({
 export const MintAction = z.object({
   type: z.literal("mint"),
   contractId: Identifier,
-  to: Identifier,
+  /** Recipient: a named account or a literal 0x address. */
+  to: AccountRef,
   amount: DecimalAmount,
 });
 
 export const TransferAction = z.object({
   type: z.literal("transfer"),
   contractId: Identifier,
+  /** Sender must be a named Anvil account (Blacksmith can only sign for those). */
   from: Identifier,
-  to: Identifier,
+  /** Recipient: a named account or a literal 0x address. */
+  to: AccountRef,
   amount: DecimalAmount,
 });
 
@@ -91,7 +94,8 @@ export type ActionType = Action["type"];
 export const TokenBalanceAssertion = z.object({
   type: z.literal("tokenBalance"),
   contractId: Identifier,
-  account: Identifier,
+  /** A named account or a literal 0x address. */
+  account: AccountRef,
   /** Expected balance in human units (decimals applied by the executor). */
   expected: DecimalAmount,
   /** Optional human-readable description for the UI. */
