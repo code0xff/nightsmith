@@ -127,12 +127,6 @@ export const AiStatus = z.object({
 });
 export type AiStatus = z.infer<typeof AiStatus>;
 
-export const AiConnectRequest = z.object({
-  /** OpenAI API key to store locally; "" clears it. Never returned by the API. */
-  openaiApiKey: z.string().optional(),
-});
-export type AiConnectRequest = z.infer<typeof AiConnectRequest>;
-
 // Anvil toolchain status / install
 export const AnvilStatus = z.object({
   installed: z.boolean(),

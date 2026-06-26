@@ -85,13 +85,12 @@ selection. The order is:
    working dir, as a pure plan generator.
 3. **Mock** — the deterministic, offline default; always available, no key/network.
 
-The cockpit header's **AI** badge shows which provider is active. Click it to see
-the resolution and to add/clear the OpenAI key. The only configuration is the
-key itself:
+The cockpit header's **AI** badge shows which provider is active; click it to see
+the resolution. The only configuration is the OpenAI key, set via the
+environment — Nightsmith never stores it on disk or accepts it through the UI:
 
-- Add it in the cockpit (badge → enter `sk-…` → Save), stored at
-  `~/.nightsmith/credentials.json` (mode 0600); or
-- set `OPENAI_API_KEY` in the environment (env wins over the stored key).
+- `OPENAI_API_KEY` — enables the OpenAI provider (in your `.env` or shell), then
+  restart the server.
 - Model: `NIGHTSMITH_OPENAI_MODEL` (default `gpt-5.5`).
 
 The key is sent only to OpenAI when generating a plan — never logged, never

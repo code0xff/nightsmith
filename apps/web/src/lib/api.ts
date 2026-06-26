@@ -8,7 +8,6 @@ import {
   PromptResponse,
   SessionDetail,
   SessionListResponse,
-  type AiConnectRequest,
   type LocalnetAction,
   type Plan,
   type UploadedArtifact,
@@ -96,7 +95,4 @@ export const api = {
     request(`/api/artifacts/${encodeURIComponent(name)}`, OkResponse, { method: "DELETE" }),
 
   getAi: () => request("/api/ai", AiStatus),
-  aiConnect: (body: AiConnectRequest) =>
-    request("/api/ai/connect", AiStatus, { method: "POST", body: JSON.stringify(body) }),
-  aiDisconnect: () => request("/api/ai/disconnect", AiStatus, { method: "POST" }),
 };

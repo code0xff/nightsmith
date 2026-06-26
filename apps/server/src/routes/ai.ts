@@ -1,10 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { AiConnectRequest, type AiStatus } from "@nightsmith/shared";
-import {
-  clearOpenAiKey,
-  isOpenAiConnected,
-  setOpenAiKey,
-} from "../ai/credentials.js";
+import type { AiStatus } from "@nightsmith/shared";
+import { isOpenAiConnected } from "../ai/credentials.js";
 import { isCodexAvailable } from "../ai/providers/codex.js";
 import { activeProvider, PROVIDER_NAMES } from "../ai/planner.js";
 
@@ -21,18 +17,7 @@ async function status(): Promise<AiStatus> {
 }
 
 export function registerAiRoutes(app: FastifyInstance): void {
-  // Status never includes the key — only whether one is present.
+  // Read-only: the active provider is auto-resolved. The OpenAI key comes from
+  // the OPENAI_API_KEY environment variable only — never set/stored via the API.
   app.get("/api/ai", async (): Promise<AiStatus> => status());
-
-  // The only thing the user can set is the OpenAI key; provider is automatic.
-  app.post("/api/ai/connect", async (req): Promise<AiStatus> => {
-    const body = AiConnectRequest.parse(req.body);
-    if (body.openaiApiKey !== undefined) setOpenAiKey(body.openaiApiKey);
-    return status();
-  });
-
-  app.post("/api/ai/disconnect", async (): Promise<AiStatus> => {
-    clearOpenAiKey();
-    return status();
-  });
 }

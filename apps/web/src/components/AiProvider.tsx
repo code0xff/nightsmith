@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { Check, Minus, Sparkles, X } from "lucide-react";
-import { toast } from "sonner";
-import type { AiStatus, ProviderName } from "@nightsmith/shared";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Check, Sparkles, X } from "lucide-react";
+import type { BadgeProps } from "@/components/ui/badge";
+import type { ProviderName } from "@nightsmith/shared";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { api, ApiRequestError } from "@/lib/api";
 import { useAppStore } from "@/state/useAppStore";
 
 const BADGE: Record<ProviderName, NonNullable<BadgeProps["variant"]>> = {
@@ -21,7 +19,6 @@ const LABEL: Record<ProviderName, string> = {
   mock: "Mock",
 };
 
-/** A row in the resolution list: name, availability, and whether it's active. */
 function ResolutionRow({
   name,
   available,
@@ -49,42 +46,19 @@ function ResolutionRow({
   );
 }
 
-/** Header control: shows the auto-resolved AI provider; manages the OpenAI key. */
+/** Header control: shows the auto-resolved AI provider (read-only). */
 export function AiProvider() {
   const ai = useAppStore((s) => s.ai);
-  const setAi = useAppStore((s) => s.setAi);
   const [open, setOpen] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const apply = async (fn: () => Promise<AiStatus>, okMsg: string) => {
-    setSaving(true);
-    try {
-      const next = await fn();
-      setAi(next);
-      setApiKey("");
-      toast.success(okMsg, { description: `Active provider: ${next.provider}` });
-    } catch (err) {
-      toast.error("AI update failed", {
-        description: err instanceof ApiRequestError ? err.message : String(err),
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const provider = ai?.provider;
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setApiKey("");
-          setOpen(true);
-        }}
-        aria-label="AI provider settings"
-        title="AI provider settings"
+        onClick={() => setOpen(true)}
+        aria-label="AI provider status"
+        title="AI provider status"
         className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Badge variant={provider ? BADGE[provider] : "outline"}>
@@ -124,50 +98,17 @@ export function AiProvider() {
               />
             </div>
 
-            <div className="space-y-1 border-t pt-3">
-              <label htmlFor="openai-key" className="text-xs text-muted-foreground">
-                OpenAI API key {ai.openaiConnected && "(a key is already saved)"}
-              </label>
-              <Input
-                id="openai-key"
-                type="password"
-                autoComplete="off"
-                placeholder={ai.openaiConnected ? "•••••••• (enter to replace)" : "sk-…"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="font-mono"
-              />
-              <p className="text-xs text-muted-foreground">
-                Set a key to use OpenAI; clear it to fall back to Codex (if installed) then
-                Mock. Stored at <code>~/.nightsmith/credentials.json</code> (0600), sent only
-                to OpenAI, never logged.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              To use OpenAI, set <code>OPENAI_API_KEY</code> in the environment (e.g. your{" "}
+              <code>.env</code>) and restart the server. The key is read from the environment
+              only — Nightsmith never stores it. Otherwise it falls back to Codex (if installed),
+              then the offline Mock planner.
+            </p>
 
-            <div className="flex items-center justify-between gap-2 pt-1">
-              {ai.openaiConnected ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => apply(() => api.aiDisconnect(), "OpenAI key removed")}
-                  disabled={saving}
-                >
-                  <Minus />
-                  Remove key
-                </Button>
-              ) : (
-                <span />
-              )}
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
-                  Close
-                </Button>
-                <Button
-                  onClick={() => apply(() => api.aiConnect({ openaiApiKey: apiKey }), "OpenAI key saved")}
-                  disabled={saving || !apiKey.trim()}
-                >
-                  {saving ? "Saving…" : "Save key"}
-                </Button>
-              </div>
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                Close
+              </Button>
             </div>
           </div>
         )}
