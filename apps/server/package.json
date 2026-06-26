@@ -1,0 +1,34 @@
+{
+  "name": "@blacksmith/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Blacksmith local server + CLI",
+  "bin": {
+    "blacksmith": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "demo": "tsx src/demo.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js serve"
+  },
+  "dependencies": {
+    "@blacksmith/contracts": "workspace:*",
+    "@blacksmith/shared": "workspace:*",
+    "@fastify/static": "^8.0.3",
+    "@fastify/websocket": "^11.0.1",
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "fastify": "^5.2.0",
+    "viem": "^2.21.55",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
