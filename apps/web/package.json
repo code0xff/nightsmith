@@ -1,9 +1,9 @@
 {
-  "name": "@blacksmith/web",
+  "name": "@nightsmith/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Blacksmith web cockpit",
+  "description": "Nightsmith web cockpit",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blacksmith/shared": "workspace:*",
+    "@nightsmith/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

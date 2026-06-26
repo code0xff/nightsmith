@@ -1,5 +1,5 @@
 import { Activity } from "lucide-react";
-import type { LocalnetStatus as Status } from "@blacksmith/shared";
+import type { LocalnetStatus as Status } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { CopyButton } from "@/components/ui/copy-button";

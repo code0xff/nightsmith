@@ -1,6 +1,6 @@
 # Manifest format
 
-The **World manifest** is Blacksmith's internal source of truth. The AI planner
+The **World manifest** is Nightsmith's internal source of truth. The AI planner
 generates it, the safety validator checks it, and the executor runs it
 deterministically. You never have to hand-write one — but you can export, edit,
 and replay it. The schema lives in `packages/shared/src/manifest.ts` (zod).

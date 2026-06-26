@@ -1,4 +1,4 @@
-import { Plan as PlanSchema, type Plan } from "@blacksmith/shared";
+import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { errorMessage } from "../utils/errors.js";
 import { scanForSecrets } from "../safety/validateSecrets.js";
 import { resolveOpenAiKey, resolveProvider, type ProviderName } from "./credentials.js";

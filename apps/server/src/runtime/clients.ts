@@ -34,7 +34,7 @@ export function makeWalletClient(
 
 /**
  * Derive a deterministic account from the Anvil mnemonic by index. These are
- * public test keys — Blacksmith never handles real private keys.
+ * public test keys — Nightsmith never handles real private keys.
  */
 export function accountAtIndex(mnemonic: string, addressIndex: number): HDAccount {
   return mnemonicToAccount(mnemonic, { addressIndex });

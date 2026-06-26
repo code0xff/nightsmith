@@ -4,7 +4,7 @@ import {
   NetworkConfig,
   type LocalnetActionResponse,
   type WorldState,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { AppError } from "../utils/errors.js";
 import type { Runtime } from "../runtime/runtime.js";
 

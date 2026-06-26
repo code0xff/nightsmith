@@ -1,4 +1,4 @@
-import type { ControlAction, PlanIntent } from "@blacksmith/shared";
+import type { ControlAction, PlanIntent } from "@nightsmith/shared";
 
 export interface TokenPreset {
   name: string;

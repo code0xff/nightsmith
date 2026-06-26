@@ -1,9 +1,9 @@
 {
-  "name": "@blacksmith/shared",
+  "name": "@nightsmith/shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared zod schemas and types for Blacksmith (manifest, events, api)",
+  "description": "Shared zod schemas and types for Nightsmith (manifest, events, api)",
   "exports": {
     ".": "./src/index.ts"
   },

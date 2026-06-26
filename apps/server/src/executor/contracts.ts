@@ -1,6 +1,6 @@
 import type { Abi } from "viem";
-import { MockERC20 } from "@blacksmith/contracts";
-import type { MockErc20Def } from "@blacksmith/shared";
+import { MockERC20 } from "@nightsmith/contracts";
+import type { MockErc20Def } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 
 const mockErc20Abi = MockERC20.abi as Abi;

@@ -13,7 +13,7 @@ import {
   type TxRecord,
   type WorldManifest,
   type WorldState,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { AnvilProcess } from "../anvil/processManager.js";
 import { assertAnvilInstalled } from "../anvil/preflight.js";
 import { getChainStatus } from "../anvil/status.js";

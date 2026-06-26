@@ -6,9 +6,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Blacksmith runtime data (sessions, manifests, logs)
-.blacksmith/
-~/.blacksmith/
+# Nightsmith runtime data (sessions, manifests, logs)
+.nightsmith/
+~/.nightsmith/
 
 # Foundry (the slim, committed artifact lives in packages/contracts/artifacts/)
 packages/contracts/cache/

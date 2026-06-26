@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   PromptRequest,
   type PromptResponse,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { generatePlan } from "../ai/planner.js";
 import { getSession } from "../sessions/store.js";
 import { assertPromptHasNoSecrets } from "../safety/validateSecrets.js";

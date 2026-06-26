@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /// @title MockERC20
-/// @notice A minimal, dependency-free ERC20 used by Blacksmith for local test
+/// @notice A minimal, dependency-free ERC20 used by Nightsmith for local test
 ///         worlds. Decimals are configurable and anyone may mint — this is a
 ///         throwaway local mock, never intended for real networks.
 contract MockERC20 {

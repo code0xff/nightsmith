@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ServerEvent } from "@blacksmith/shared";
+import { ServerEvent } from "@nightsmith/shared";
 import { useAppStore } from "@/state/useAppStore";
 
 /**

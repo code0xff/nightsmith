@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import type { AnvilStatus } from "@blacksmith/shared";
+import type { AnvilStatus } from "@nightsmith/shared";
 import { isAnvilInstalled } from "../anvil/preflight.js";
 import {
   FOUNDRY_INSTALL_COMMAND,
@@ -27,7 +27,7 @@ export function registerAnvilRoutes(app: FastifyInstance, runtime: Runtime): voi
   app.get("/api/anvil", async (): Promise<AnvilStatus> => status());
 
   app.post("/api/anvil/install", async (req): Promise<AnvilStatus> => {
-    if (req.headers["x-blacksmith-install-token"] !== INSTALL_TOKEN) {
+    if (req.headers["x-nightsmith-install-token"] !== INSTALL_TOKEN) {
       throw new AppError("Missing or invalid install token", 403);
     }
     if (runtime.isInstalling()) {

@@ -1,11 +1,11 @@
-import { Plan as PlanSchema, type Plan } from "@blacksmith/shared";
+import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { AppError, errorMessage } from "../../utils/errors.js";
 import { resolveOpenAiKey } from "../credentials.js";
 import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/plannerPrompt.js";
 import type { AiProvider, PlanInput } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-5.5";
+const MODEL = process.env.NIGHTSMITH_OPENAI_MODEL ?? "gpt-5.5";
 const REQUEST_TIMEOUT_MS = 60_000;
 
 interface ChatMessage {

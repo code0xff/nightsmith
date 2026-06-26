@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { AiConnectRequest, type AiStatus } from "@blacksmith/shared";
+import { AiConnectRequest, type AiStatus } from "@nightsmith/shared";
 import {
   isOpenAiConnected,
   isProviderEnvManaged,
@@ -9,7 +9,7 @@ import {
 import { isCodexAvailable } from "../ai/providers/codex.js";
 import { PROVIDER_NAMES } from "../ai/planner.js";
 
-const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-5.5";
+const MODEL = process.env.NIGHTSMITH_OPENAI_MODEL ?? "gpt-5.5";
 
 async function status(): Promise<AiStatus> {
   return {

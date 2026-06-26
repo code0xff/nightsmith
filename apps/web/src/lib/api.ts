@@ -10,7 +10,7 @@ import {
   type AiConnectRequest,
   type LocalnetAction,
   type Plan,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 
 export class ApiRequestError extends Error {
   readonly details?: string[];
@@ -81,7 +81,7 @@ export const api = {
   installAnvil: (token: string) =>
     request("/api/anvil/install", AnvilStatus, {
       method: "POST",
-      headers: { "x-blacksmith-install-token": token },
+      headers: { "x-nightsmith-install-token": token },
     }),
 
   getAi: () => request("/api/ai", AiStatus),

@@ -3,7 +3,7 @@ import type {
   ExecutionReport,
   StepResult,
   WorldManifest,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { errorMessage } from "../utils/errors.js";
 import { setupAccounts } from "./accounts.js";

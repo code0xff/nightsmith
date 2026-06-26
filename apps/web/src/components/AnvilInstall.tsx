@@ -62,7 +62,7 @@ export function AnvilInstall() {
             <div className="space-y-0.5">
               <p className="text-sm font-medium">Anvil not found</p>
               <p className="text-xs text-muted-foreground">
-                Blacksmith needs Foundry’s Anvil to run a localnet.
+                Nightsmith needs Foundry’s Anvil to run a localnet.
               </p>
             </div>
           </div>

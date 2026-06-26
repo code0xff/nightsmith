@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Terminal, Trash2 } from "lucide-react";
-import type { LogLevel } from "@blacksmith/shared";
+import type { LogLevel } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ALL_LEVELS, useAppStore } from "@/state/useAppStore";

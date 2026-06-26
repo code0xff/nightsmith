@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import type { LocalnetAction } from "@blacksmith/shared";
+import type { LocalnetAction } from "@nightsmith/shared";
 import { ApiRequestError, api } from "./api";
 import { useAppStore } from "@/state/useAppStore";
 

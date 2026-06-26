@@ -1,4 +1,4 @@
-import type { ExecutionReport, WorldManifest } from "@blacksmith/shared";
+import type { ExecutionReport, WorldManifest } from "@nightsmith/shared";
 
 /** Render an execution report as a human-readable Markdown document. */
 export function reportToMarkdown(

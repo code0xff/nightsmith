@@ -4,7 +4,7 @@ import {
   NetworkConfig,
   type Assertion,
   type WorldManifest,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import type { TokenPreset } from "./parse.js";
 
 export interface WorldParams {

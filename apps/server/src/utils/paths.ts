@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 /** Root data directory for sessions, manifests, logs, and reports. */
 export function dataDir(): string {
-  return process.env.BLACKSMITH_DATA_DIR ?? join(homedir(), ".blacksmith");
+  return process.env.NIGHTSMITH_DATA_DIR ?? join(homedir(), ".nightsmith");
 }
 
 export function sessionsDir(): string {
@@ -16,7 +16,7 @@ export function sessionDir(id: string): string {
   return join(sessionsDir(), id);
 }
 
-/** PID/lock file for a running localnet, used by `blacksmith stop`. */
+/** PID/lock file for a running localnet, used by `nightsmith stop`. */
 export function runtimeStateFile(): string {
   return join(dataDir(), "runtime.json");
 }
@@ -33,8 +33,8 @@ export function ensureDir(dir: string): string {
  * (e.g. dev mode, where Vite serves the UI instead).
  */
 export function webDistDir(): string | null {
-  if (process.env.BLACKSMITH_WEB_DIST && existsSync(process.env.BLACKSMITH_WEB_DIST)) {
-    return process.env.BLACKSMITH_WEB_DIST;
+  if (process.env.NIGHTSMITH_WEB_DIST && existsSync(process.env.NIGHTSMITH_WEB_DIST)) {
+    return process.env.NIGHTSMITH_WEB_DIST;
   }
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [

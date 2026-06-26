@@ -1,4 +1,4 @@
-import type { Plan } from "@blacksmith/shared";
+import type { Plan } from "@nightsmith/shared";
 import { SafetyError } from "../utils/errors.js";
 import { validateManifest } from "../manifest/validate.js";
 import { validateNetwork } from "./validateNetwork.js";
@@ -7,7 +7,7 @@ import { scanForSecrets } from "./validateSecrets.js";
 export interface ValidatedPlan {
   plan: Plan;
   /** Present for create/modify/runScenario intents. */
-  manifest: import("@blacksmith/shared").WorldManifest | null;
+  manifest: import("@nightsmith/shared").WorldManifest | null;
 }
 
 /**

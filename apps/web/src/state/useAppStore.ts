@@ -8,7 +8,7 @@ import {
   type Plan,
   type ServerEvent,
   type WorldState,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 
 const MAX_LOGS = 2000;
 const ALL_LEVELS: LogLevel[] = ["debug", "info", "success", "warning", "error"];

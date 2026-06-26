@@ -2,7 +2,7 @@ import artifact from "../artifacts/MockERC20.json" with { type: "json" };
 
 /**
  * Precompiled MockERC20 artifact. Deployed at runtime with viem — no solc
- * needed. Regenerate with `pnpm --filter @blacksmith/contracts compile`.
+ * needed. Regenerate with `pnpm --filter @nightsmith/contracts compile`.
  */
 export const MockERC20 = {
   abi: artifact.abi,

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { ServerEvent } from "@blacksmith/shared";
+import type { ServerEvent } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 
 /**

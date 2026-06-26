@@ -1,4 +1,4 @@
-import type { Assertion, AssertionResult } from "@blacksmith/shared";
+import type { Assertion, AssertionResult } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { readTokenBalanceRaw } from "./tokens.js";
 import { fromTokenUnits, toTokenUnits } from "./units.js";

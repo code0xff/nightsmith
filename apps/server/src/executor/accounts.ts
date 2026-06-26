@@ -1,4 +1,4 @@
-import type { AccountDef } from "@blacksmith/shared";
+import type { AccountDef } from "@nightsmith/shared";
 import { setBalance } from "../anvil/snapshot.js";
 import type { Runtime } from "../runtime/runtime.js";
 import { fromWei, toWei } from "./units.js";

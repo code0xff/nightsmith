@@ -1,6 +1,6 @@
 # Architecture
 
-Blacksmith is a localhost web application with three runtime layers: a **web cockpit**, a **local server**, and a **deterministic executor** that drives a Foundry **Anvil** node. An **AI planner** sits in front of execution to translate natural language into reviewable manifests.
+Nightsmith is a localhost web application with three runtime layers: a **web cockpit**, a **local server**, and a **deterministic executor** that drives a Foundry **Anvil** node. An **AI planner** sits in front of execution to translate natural language into reviewable manifests.
 
 ```
 ┌──────────────────────────── Browser ────────────────────────────┐
@@ -40,7 +40,7 @@ Fastify server that:
 - manages the Anvil process lifecycle,
 - persists sessions, manifests, deployments, logs, and reports.
 
-Also ships the `blacksmith` CLI (`serve`, `stop`, `export`, `replay`, `doctor`) as a launcher/automation layer.
+Also ships the `nightsmith` CLI (`serve`, `stop`, `export`, `replay`, `doctor`) as a launcher/automation layer.
 
 ### 3. AI Planner (`apps/server/src/ai`)
 
@@ -60,7 +60,7 @@ Deterministic engine using **viem** for RPC and **execa** for process spawning. 
 
 ### 7. Session Store (`apps/server/src/sessions`)
 
-File-based store under `~/.blacksmith/sessions/<id>/` holding the manifest, deployments, logs, and report. Enables resume, replay, export, and deletion.
+File-based store under `~/.nightsmith/sessions/<id>/` holding the manifest, deployments, logs, and report. Enables resume, replay, export, and deletion.
 
 ## Data flow (demo)
 

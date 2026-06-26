@@ -117,7 +117,7 @@ export const AiStatus = z.object({
   openaiConnected: z.boolean(),
   /** Whether the Codex CLI is installed (usable as a no-key fallback). */
   codexAvailable: z.boolean(),
-  /** Provider is pinned by BLACKSMITH_AI_PROVIDER; the UI can't override it. */
+  /** Provider is pinned by NIGHTSMITH_AI_PROVIDER; the UI can't override it. */
   envManaged: z.boolean(),
   model: z.string(),
   providers: z.array(ProviderName),
@@ -139,7 +139,7 @@ export const AnvilStatus = z.object({
   /** The exact command an install will run (shown to the user for consent). */
   installCommand: z.string(),
   /**
-   * Per-process token required (as `x-blacksmith-install-token`) to POST the
+   * Per-process token required (as `x-nightsmith-install-token`) to POST the
    * install. Only a same-origin reader (the cockpit) can obtain it, so a
    * cross-origin page can't trigger the install.
    */

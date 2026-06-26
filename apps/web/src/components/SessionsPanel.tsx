@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, History, Play, RefreshCw, Trash2 } from "lucide-react";
-import type { SessionSummary } from "@blacksmith/shared";
+import type { SessionSummary } from "@nightsmith/shared";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { ExecuteRequest, type ExecuteResponse } from "@blacksmith/shared";
+import { ExecuteRequest, type ExecuteResponse } from "@nightsmith/shared";
 import { runPlan } from "../executor/runPlan.js";
 import { AppError } from "../utils/errors.js";
 import type { Runtime } from "../runtime/runtime.js";

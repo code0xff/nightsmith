@@ -5,7 +5,7 @@ import { dataDir, ensureDir } from "../utils/paths.js";
 /**
  * Local, on-disk AI configuration. The user picks a provider and (for OpenAI)
  * supplies an API key via the cockpit's "Connect" flow; we persist it under
- * ~/.blacksmith/credentials.json with 0600 perms. The key is a provider
+ * ~/.nightsmith/credentials.json with 0600 perms. The key is a provider
  * credential the user owns — it is never sent anywhere except OpenAI, never
  * logged, and never returned to the client.
  */
@@ -49,12 +49,12 @@ function write(config: StoredConfig): void {
 }
 
 function envProvider(): ProviderName | undefined {
-  const e = process.env.BLACKSMITH_AI_PROVIDER;
+  const e = process.env.NIGHTSMITH_AI_PROVIDER;
   return e === "mock" || e === "openai" || e === "codex" ? e : undefined;
 }
 
 /**
- * The active provider: env (BLACKSMITH_AI_PROVIDER) wins, then the stored
+ * The active provider: env (NIGHTSMITH_AI_PROVIDER) wins, then the stored
  * choice, then mock. Env-first keeps config-as-code authoritative and matches
  * how the OpenAI key resolves (env over stored).
  */

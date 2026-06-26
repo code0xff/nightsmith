@@ -11,6 +11,6 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   // Bundle the workspace packages (they export TS source) into the output.
-  noExternal: [/@blacksmith\//],
+  noExternal: [/@nightsmith\//],
   banner: { js: "#!/usr/bin/env node" },
 });

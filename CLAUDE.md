@@ -1,10 +1,10 @@
-# CLAUDE.md — Blacksmith
+# CLAUDE.md — Nightsmith
 
 Guidance for working in this repository.
 
 ## What this is
 
-**Blacksmith** is an AI-native local blockchain cockpit for **Foundry Anvil**. Developers describe a test world in natural language; Blacksmith converts intent into a reviewable execution **manifest**, validates it for safety, previews it, executes it on a local Anvil node, and streams logs/state to a web UI. The resulting world is inspectable, replayable, and exportable.
+**Nightsmith** is an AI-native local blockchain cockpit for **Foundry Anvil**. Developers describe a test world in natural language; Nightsmith converts intent into a reviewable execution **manifest**, validates it for safety, previews it, executes it on a local Anvil node, and streams logs/state to a web UI. The resulting world is inspectable, replayable, and exportable.
 
 Mental model:
 
@@ -18,7 +18,7 @@ Mental model:
 ```
 apps/
   web/        # Vite + React + shadcn/ui cockpit (primary UX)
-  server/     # Fastify local server + CLI (`blacksmith`)
+  server/     # Fastify local server + CLI (`nightsmith`)
 packages/
   shared/     # zod schemas + types (manifest, events, api) — single source of truth
   contracts/  # MockERC20.sol source + precompiled bytecode/ABI artifact
@@ -35,20 +35,20 @@ pnpm dev:web          # run the web dev server (proxies /api,/ws to server)
 pnpm demo             # headless demo: prompt -> plan -> execute, asserts Bob = 110 USDC
 ```
 
-CLI (from `apps/server`, exposed as `blacksmith`):
+CLI (from `apps/server`, exposed as `nightsmith`):
 
 ```bash
-blacksmith serve      # start server + serve web UI on http://localhost:4040
-blacksmith stop       # stop a running localnet
-blacksmith export     # export a session manifest
-blacksmith replay     # replay a saved session
-blacksmith doctor     # check anvil/forge/cast availability and ports
+nightsmith serve      # start server + serve web UI on http://localhost:4040
+nightsmith stop       # stop a running localnet
+nightsmith export     # export a session manifest
+nightsmith replay     # replay a saved session
+nightsmith doctor     # check anvil/forge/cast availability and ports
 ```
 
 ## Conventions
 
 - TypeScript everywhere, ESM (`"type": "module"`), `strict` on.
-- `packages/shared` is the **only** place to define manifest/event/API shapes. Import from `@blacksmith/shared`; never duplicate a type.
+- `packages/shared` is the **only** place to define manifest/event/API shapes. Import from `@nightsmith/shared`; never duplicate a type.
 - All cross-boundary data is validated with **zod** at the edge (route handlers, planner output, manifest load).
 - The executor is **deterministic**: same manifest → same world. No randomness, no wall-clock branching.
 - Contracts are deployed from the **precompiled artifact** in `packages/contracts` via viem — no `solc` at runtime.
@@ -64,4 +64,4 @@ blacksmith doctor     # check anvil/forge/cast availability and ports
 
 ## Anvil test accounts
 
-Anvil's deterministic mnemonic yields 10 dev accounts. Blacksmith maps named accounts by index: `0 = deployer`, `1 = Alice`, `2 = Bob`. These are **public, well-known test keys** — not secrets.
+Anvil's deterministic mnemonic yields 10 dev accounts. Nightsmith maps named accounts by index: `0 = deployer`, `1 = Alice`, `2 = Bob`. These are **public, well-known test keys** — not secrets.

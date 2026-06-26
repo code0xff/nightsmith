@@ -1,4 +1,4 @@
-import type { Plan, WorldManifest } from "@blacksmith/shared";
+import type { Plan, WorldManifest } from "@nightsmith/shared";
 
 export interface PlanInput {
   /** The user's natural-language request (already secret-scanned). */

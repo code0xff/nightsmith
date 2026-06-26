@@ -12,7 +12,7 @@ import type {
   SessionDetail,
   SessionSummary,
   WorldManifest,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { AppError } from "../utils/errors.js";
 import { ensureDir, sessionDir, sessionsDir } from "../utils/paths.js";
 import { reportToMarkdown } from "./report.js";

@@ -1,6 +1,6 @@
 # Safety model
 
-Blacksmith runs untrusted, AI-generated intent against a blockchain node. The
+Nightsmith runs untrusted, AI-generated intent against a blockchain node. The
 safety model keeps that local, reviewable, and free of secrets. The rules below
 are enforced in code (`apps/server/src/safety/`), not just documented.
 
@@ -8,12 +8,12 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
 
 1. **Local-only by default.** The only network kind is `anvil-local`. Forking a
    remote chain or broadcasting beyond the local node is rejected unless you
-   explicitly opt in (`BLACKSMITH_ALLOW_FORK=true` / `BLACKSMITH_ALLOW_BROADCAST=true`).
+   explicitly opt in (`NIGHTSMITH_ALLOW_FORK=true` / `NIGHTSMITH_ALLOW_BROADCAST=true`).
    — `safety/validateNetwork.ts`
 2. **No secrets reach the AI.** User prompts are scanned for private keys, PEM
    blocks, and common API-key shapes before any provider call; matches are
    rejected. — `safety/validateSecrets.ts`
-3. **No private keys, ever.** Blacksmith never asks for or stores a private key.
+3. **No private keys, ever.** Nightsmith never asks for or stores a private key.
    Local execution uses only Anvil's well-known **public** test accounts. Custom
    mnemonics are rejected, and anything resembling a private key in Anvil's
    output is redacted before it reaches the logs.
@@ -22,7 +22,7 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
    runs it. The plan is re-validated (shape + semantics + network) at execution
    time — including replayed/resumed sessions loaded from disk. — `safety/validatePlan.ts`
 5. **Everything is saved and reproducible.** Each run persists its manifest,
-   report, and logs to `~/.blacksmith/sessions/<id>/`, so any world can be
+   report, and logs to `~/.nightsmith/sessions/<id>/`, so any world can be
    inspected, replayed, exported, or deleted.
 6. **Mock tokens by default.** Named assets (USDC, DAI, WETH) become a local
    `MockERC20`. A real/mainnet token would require explicit fork configuration.
@@ -44,9 +44,9 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
 
 | Env var | Effect |
 | --- | --- |
-| `BLACKSMITH_ALLOW_FORK=true` | Permit `network.forkUrl` (fork a remote chain) |
-| `BLACKSMITH_ALLOW_BROADCAST=true` | Permit `network.broadcast` beyond the local node |
-| `BLACKSMITH_AI_PROVIDER=openai` | Use the OpenAI provider instead of the mock (needs `OPENAI_API_KEY` or the cockpit Connect flow; anthropic remains a stub) |
+| `NIGHTSMITH_ALLOW_FORK=true` | Permit `network.forkUrl` (fork a remote chain) |
+| `NIGHTSMITH_ALLOW_BROADCAST=true` | Permit `network.broadcast` beyond the local node |
+| `NIGHTSMITH_AI_PROVIDER=openai` | Use the OpenAI provider instead of the mock (needs `OPENAI_API_KEY` or the cockpit Connect flow; anthropic remains a stub) |
 
 These exist for advanced, deliberate use. The defaults are local-only and
 secret-free.

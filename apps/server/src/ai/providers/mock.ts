@@ -1,4 +1,4 @@
-import type { Action, Plan, WorldManifest } from "@blacksmith/shared";
+import type { Action, Plan, WorldManifest } from "@nightsmith/shared";
 import { diffManifests } from "../../manifest/diff.js";
 import {
   detectIntent,

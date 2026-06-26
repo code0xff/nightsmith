@@ -1,4 +1,4 @@
-import { parseManifest, type WorldManifest } from "@blacksmith/shared";
+import { parseManifest, type WorldManifest } from "@nightsmith/shared";
 import { AppError } from "../utils/errors.js";
 
 /**

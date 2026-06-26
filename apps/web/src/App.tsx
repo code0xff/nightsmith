@@ -45,7 +45,7 @@ export function App() {
       <header className="flex shrink-0 items-center justify-between border-b px-4 py-2">
         <div className="flex items-baseline gap-2">
           <Hammer className="size-4 translate-y-0.5 text-foreground" />
-          <span className="text-sm font-medium tracking-tight">Blacksmith</span>
+          <span className="text-sm font-medium tracking-tight">Nightsmith</span>
           <span className="hidden text-xs text-muted-foreground sm:inline">
             local blockchain cockpit
           </span>

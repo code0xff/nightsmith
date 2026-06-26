@@ -1,9 +1,9 @@
 {
-  "name": "@blacksmith/contracts",
+  "name": "@nightsmith/contracts",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Solidity sources and precompiled artifacts for Blacksmith local worlds",
+  "description": "Solidity sources and precompiled artifacts for Nightsmith local worlds",
   "exports": {
     ".": "./src/index.ts"
   },

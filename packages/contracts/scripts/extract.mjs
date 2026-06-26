@@ -1,5 +1,5 @@
 // Regenerate the slim, committed artifact (abi + bytecode) from forge output.
-// Run via `pnpm --filter @blacksmith/contracts compile`.
+// Run via `pnpm --filter @nightsmith/contracts compile`.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { WorldManifest } from "@blacksmith/shared";
+import type { WorldManifest } from "@nightsmith/shared";
 import { validateManifest } from "./validate.js";
 
 /** Read and validate a manifest from disk. */

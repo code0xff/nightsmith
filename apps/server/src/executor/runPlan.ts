@@ -3,7 +3,7 @@ import {
   type ExecuteResponse,
   type Plan,
   type WorldManifest,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { validateManifest } from "../manifest/validate.js";
 import { validateNetwork } from "../safety/validateNetwork.js";
 import { validatePlanForExecution } from "../safety/validatePlan.js";

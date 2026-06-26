@@ -1,11 +1,11 @@
 {
-  "name": "@blacksmith/server",
+  "name": "@nightsmith/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Blacksmith local server + CLI",
+  "description": "Nightsmith local server + CLI",
   "bin": {
-    "blacksmith": "./dist/cli.js"
+    "nightsmith": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsx watch src/dev.ts",
@@ -15,8 +15,8 @@
     "start": "node dist/cli.js serve"
   },
   "dependencies": {
-    "@blacksmith/contracts": "workspace:*",
-    "@blacksmith/shared": "workspace:*",
+    "@nightsmith/contracts": "workspace:*",
+    "@nightsmith/shared": "workspace:*",
     "@fastify/static": "^8.0.3",
     "@fastify/websocket": "^11.0.1",
     "commander": "^12.1.0",

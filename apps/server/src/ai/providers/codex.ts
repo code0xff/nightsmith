@@ -2,7 +2,7 @@ import { execa } from "execa";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Plan as PlanSchema, type Plan } from "@blacksmith/shared";
+import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { AppError } from "../../utils/errors.js";
 import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/plannerPrompt.js";
 import type { AiProvider, PlanInput } from "./types.js";
@@ -67,7 +67,7 @@ export const codexProvider: AiProvider = {
       throw new AppError("Codex CLI not found on PATH", 400);
     }
 
-    const work = mkdtempSync(join(tmpdir(), "blacksmith-codex-"));
+    const work = mkdtempSync(join(tmpdir(), "nightsmith-codex-"));
     const outFile = join(work, "plan.json");
     try {
       await execa(

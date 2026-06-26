@@ -2,7 +2,7 @@ import { createLogger, defineConfig, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
-const SERVER = process.env.BLACKSMITH_SERVER ?? "http://127.0.0.1:4040";
+const SERVER = process.env.NIGHTSMITH_SERVER ?? "http://127.0.0.1:4040";
 
 // Benign proxy churn: when the backend restarts, or when the client closes a
 // WebSocket mid-flush (common under React StrictMode's double-mount), the proxy

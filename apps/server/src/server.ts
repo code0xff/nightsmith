@@ -16,13 +16,13 @@ import { registerWebSocket } from "./ws/stream.js";
 import { AppError, errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
-export interface BlacksmithServer {
+export interface NightsmithServer {
   app: FastifyInstance;
   runtime: Runtime;
 }
 
 /** Build the Fastify app and runtime without listening (useful for tests). */
-export async function buildServer(): Promise<BlacksmithServer> {
+export async function buildServer(): Promise<NightsmithServer> {
   const app = Fastify({ logger: false });
   const runtime = new Runtime();
 
@@ -34,7 +34,7 @@ export async function buildServer(): Promise<BlacksmithServer> {
     "127.0.0.1",
     "::1",
     "[::1]",
-    ...(process.env.BLACKSMITH_ALLOWED_HOSTS ?? "")
+    ...(process.env.NIGHTSMITH_ALLOWED_HOSTS ?? "")
       .split(",")
       .map((h) => h.trim().toLowerCase())
       .filter(Boolean),
@@ -67,7 +67,7 @@ export async function buildServer(): Promise<BlacksmithServer> {
 
   app.get("/api/health", async () => ({
     ok: true,
-    name: "blacksmith",
+    name: "nightsmith",
     running: runtime.isRunning(),
   }));
 
@@ -98,12 +98,12 @@ export async function buildServer(): Promise<BlacksmithServer> {
 }
 
 /** Build and start the server, returning the handle for graceful shutdown. */
-export async function startServer(): Promise<BlacksmithServer> {
+export async function startServer(): Promise<NightsmithServer> {
   const server = await buildServer();
   await server.app.listen({ port: SERVER_PORT, host: SERVER_HOST });
-  logger.info(`Blacksmith cockpit on http://${SERVER_HOST}:${SERVER_PORT}`);
+  logger.info(`Nightsmith cockpit on http://${SERVER_HOST}:${SERVER_PORT}`);
   if (!webDistDir()) {
-    logger.warn("No web build found — run `pnpm --filter @blacksmith/web build`, or use `pnpm dev:web` for the dev UI");
+    logger.warn("No web build found — run `pnpm --filter @nightsmith/web build`, or use `pnpm dev:web` for the dev UI");
   }
 
   const shutdown = async () => {

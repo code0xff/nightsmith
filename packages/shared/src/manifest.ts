@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DecimalAmount, Identifier } from "./types.js";
 
 /**
- * The World manifest is Blacksmith's internal source of truth. It fully and
+ * The World manifest is Nightsmith's internal source of truth. It fully and
  * deterministically describes a local blockchain world: the network, the
  * named accounts, the contracts, the ordered actions, and the assertions.
  *

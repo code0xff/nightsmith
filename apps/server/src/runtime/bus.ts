@@ -5,8 +5,8 @@ import type {
   LogLevel,
   ServerEvent,
   WorldState,
-} from "@blacksmith/shared";
-import { emptyWorldState } from "@blacksmith/shared";
+} from "@nightsmith/shared";
+import { emptyWorldState } from "@nightsmith/shared";
 
 const MAX_LOG_BUFFER = 1000;
 

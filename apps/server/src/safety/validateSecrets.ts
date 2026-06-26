@@ -20,7 +20,7 @@ export function scanForSecrets(text: string): string[] {
 }
 
 /**
- * Guard a user prompt before it reaches an AI provider. Blacksmith never sends
+ * Guard a user prompt before it reaches an AI provider. Nightsmith never sends
  * private keys or secrets to a model, and never needs them — local execution
  * uses Anvil's public test accounts only.
  */
@@ -28,7 +28,7 @@ export function assertPromptHasNoSecrets(prompt: string): void {
   const found = scanForSecrets(prompt);
   if (found.length > 0) {
     throw new SafetyError(
-      "Your prompt appears to contain a private key or secret. Blacksmith will not send secrets to an AI provider — remove it and try again. Local execution only needs Anvil's public test accounts.",
+      "Your prompt appears to contain a private key or secret. Nightsmith will not send secrets to an AI provider — remove it and try again. Local execution only needs Anvil's public test accounts.",
       found,
     );
   }

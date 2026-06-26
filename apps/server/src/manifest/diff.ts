@@ -1,4 +1,4 @@
-import type { WorldManifest } from "@blacksmith/shared";
+import type { WorldManifest } from "@nightsmith/shared";
 
 /** A single human-readable change between two manifests. */
 export interface ManifestChange {

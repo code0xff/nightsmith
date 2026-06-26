@@ -1,4 +1,4 @@
-import type { Action, WorldManifest } from "@blacksmith/shared";
+import type { Action, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { deployMockErc20 } from "./contracts.js";
 import { mint, transfer } from "./tokens.js";

@@ -14,18 +14,18 @@ importers:
 
   apps/server:
     dependencies:
-      '@blacksmith/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@blacksmith/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@fastify/static':
         specifier: ^8.0.3
         version: 8.3.0
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.2.0
+      '@nightsmith/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@nightsmith/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -57,7 +57,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@blacksmith/shared':
+      '@nightsmith/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       class-variance-authority:

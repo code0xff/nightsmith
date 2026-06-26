@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import type { ProviderName } from "@blacksmith/shared";
+import type { ProviderName } from "@nightsmith/shared";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,7 +109,7 @@ export function AiProvider() {
         <div className="space-y-3">
           {ai?.envManaged && (
             <p className="rounded-md border border-warning/30 bg-warning/5 p-2 text-xs">
-              Provider is pinned by <code>BLACKSMITH_AI_PROVIDER</code> (currently{" "}
+              Provider is pinned by <code>NIGHTSMITH_AI_PROVIDER</code> (currently{" "}
               <span className="font-medium">{ai.provider}</span>). Unset it to change here.
             </p>
           )}
@@ -167,7 +167,7 @@ export function AiProvider() {
                 className="font-mono"
               />
               <p className="text-xs text-muted-foreground">
-                Stored at <code>~/.blacksmith/credentials.json</code> (0600). Sent only to
+                Stored at <code>~/.nightsmith/credentials.json</code> (0600). Sent only to
                 OpenAI when generating a plan — never to anyone else, never logged.
               </p>
             </div>

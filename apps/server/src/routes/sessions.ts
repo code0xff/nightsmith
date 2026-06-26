@@ -3,7 +3,7 @@ import type {
   ExecuteResponse,
   SessionDetail,
   SessionListResponse,
-} from "@blacksmith/shared";
+} from "@nightsmith/shared";
 import { deleteSession, getSession, listSessions } from "../sessions/store.js";
 import { runSavedManifest } from "../executor/runPlan.js";
 import type { Runtime } from "../runtime/runtime.js";
