@@ -12,18 +12,24 @@ function loadEnvFile(): void {
   if (!existsSync(path)) return;
   try {
     for (const rawLine of readFileSync(path, "utf8").split("\n")) {
-      const line = rawLine.trim();
+      let line = rawLine.trim();
       if (!line || line.startsWith("#")) continue;
+      // Allow a leading `export ` (common when copied from a shell profile).
+      if (line.startsWith("export ")) line = line.slice(7).trimStart();
       const eq = line.indexOf("=");
       if (eq < 1) continue;
       const key = line.slice(0, eq).trim();
       if (!key || key in process.env) continue; // shell export wins
       let value = line.slice(eq + 1).trim();
-      if (
+      const quoted =
         (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
+        (value.startsWith("'") && value.endsWith("'"));
+      if (quoted) {
         value = value.slice(1, -1);
+      } else {
+        // Strip an inline comment (whitespace + #) from unquoted values.
+        const comment = value.search(/\s#/);
+        if (comment >= 0) value = value.slice(0, comment).trim();
       }
       process.env[key] = value;
     }
