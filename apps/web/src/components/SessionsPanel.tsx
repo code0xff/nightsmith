@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, History, Play, RefreshCw, Trash2 } from "lucide-react";
 import type { SessionSummary } from "@blacksmith/shared";
 import { toast } from "sonner";
@@ -12,14 +12,29 @@ import { formatTime } from "@/lib/utils";
 
 export function SessionsPanel() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const execution = useAppStore((s) => s.world.execution);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
       const res = await api.sessions();
+      if (!mounted.current) return;
       setSessions(res.sessions);
-    } catch {
-      // Server may be momentarily unavailable; keep last known list.
+      setError(null);
+    } catch (err) {
+      if (!mounted.current) return;
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      if (mounted.current) setLoading(false);
     }
   }, []);
 
@@ -54,7 +69,13 @@ export function SessionsPanel() {
         </Button>
       </CardHeader>
       <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
-        {sessions.length === 0 ? (
+        {loading && sessions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Loading sessions…</p>
+        ) : error ? (
+          <p className="text-xs text-destructive">
+            Couldn’t load sessions: {error}
+          </p>
+        ) : sessions.length === 0 ? (
           <p className="text-xs text-muted-foreground">
             No saved sessions yet. Running a plan saves a replayable session.
           </p>

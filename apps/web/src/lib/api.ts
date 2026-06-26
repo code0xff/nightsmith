@@ -1,12 +1,12 @@
-import type {
+import { z } from "zod";
+import {
   ExecuteResponse,
-  LocalnetAction,
   LocalnetActionResponse,
-  Plan,
   PromptResponse,
   SessionDetail,
   SessionListResponse,
-  WorldState,
+  type LocalnetAction,
+  type Plan,
 } from "@blacksmith/shared";
 
 export class ApiRequestError extends Error {
@@ -18,7 +18,13 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+const OkResponse = z.object({ ok: z.boolean() });
+
+async function request<S extends z.ZodTypeAny>(
+  path: string,
+  schema: S,
+  init?: RequestInit,
+): Promise<z.infer<S>> {
   const res = await fetch(path, {
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
@@ -28,32 +34,39 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new ApiRequestError(body.error ?? `Request failed (${res.status})`, body.details);
   }
-  return body as T;
+  // Validate the server's shape so an unexpected response is a typed error,
+  // not a render-time crash deep in a component.
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiRequestError(
+      "Unexpected response from server",
+      parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
+    );
+  }
+  return parsed.data;
 }
 
 export const api = {
   prompt: (prompt: string, sessionId?: string) =>
-    request<PromptResponse>("/api/prompt", {
+    request("/api/prompt", PromptResponse, {
       method: "POST",
       body: JSON.stringify({ prompt, sessionId }),
     }),
 
   execute: (plan: Plan, planId?: string) =>
-    request<ExecuteResponse>("/api/execute", {
+    request("/api/execute", ExecuteResponse, {
       method: "POST",
       body: JSON.stringify({ plan, planId }),
     }),
 
   localnet: (action: LocalnetAction, snapshotId?: string) =>
-    request<LocalnetActionResponse>("/api/localnet", {
+    request("/api/localnet", LocalnetActionResponse, {
       method: "POST",
       body: JSON.stringify({ action, snapshotId }),
     }),
 
-  getLocalnet: () => request<WorldState>("/api/localnet"),
-
-  sessions: () => request<SessionListResponse>("/api/sessions"),
-  session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
+  sessions: () => request("/api/sessions", SessionListResponse),
+  session: (id: string) => request(`/api/sessions/${id}`, SessionDetail),
   deleteSession: (id: string) =>
-    request<{ ok: boolean }>(`/api/sessions/${id}`, { method: "DELETE" }),
+    request(`/api/sessions/${id}`, OkResponse, { method: "DELETE" }),
 };

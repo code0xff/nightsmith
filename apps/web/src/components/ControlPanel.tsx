@@ -30,11 +30,19 @@ export function ControlPanel() {
         <RotateCcw />
         Reset
       </Button>
-      <Button variant="outline" onClick={() => localnetAction("snapshot")} disabled={!running}>
+      <Button
+        variant="outline"
+        onClick={() => localnetAction("snapshot")}
+        disabled={busy || !running}
+      >
         <Camera />
         Snapshot
       </Button>
-      <Button variant="outline" onClick={() => localnetAction("revert")} disabled={!running}>
+      <Button
+        variant="outline"
+        onClick={() => localnetAction("revert")}
+        disabled={busy || !running}
+      >
         <Undo2 />
         Revert
       </Button>

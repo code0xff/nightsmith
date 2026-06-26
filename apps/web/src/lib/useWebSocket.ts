@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ServerEvent } from "@blacksmith/shared";
+import { ServerEvent } from "@blacksmith/shared";
 import { useAppStore } from "@/state/useAppStore";
 
 /**
@@ -15,35 +15,44 @@ export function useWebSocket(): void {
 
   useEffect(() => {
     let closed = false;
-    let socket: WebSocket | null = null;
+    // The socket currently considered "active"; stale sockets' late events are
+    // ignored (important under React StrictMode's double-invoke).
+    let current: WebSocket | null = null;
 
     const connect = () => {
       if (closed) return;
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
-      socket = new WebSocket(`${proto}://${window.location.host}/ws`);
+      const socket = new WebSocket(`${proto}://${window.location.host}/ws`);
+      current = socket;
 
       socket.onopen = () => {
+        if (socket !== current) return;
         resetSnapshot();
         setConnected(true);
       };
       socket.onmessage = (e) => {
+        if (socket !== current) return;
         try {
-          applyEvent(JSON.parse(e.data) as ServerEvent);
+          const parsed = ServerEvent.safeParse(JSON.parse(String(e.data)));
+          if (parsed.success) applyEvent(parsed.data);
         } catch {
-          // Ignore malformed frames.
+          // Ignore non-JSON / malformed frames.
         }
       };
       socket.onclose = () => {
+        if (socket !== current) return; // a superseded socket closing; ignore
         setConnected(false);
         if (!closed) retry.current = setTimeout(connect, 1500);
       };
-      socket.onerror = () => socket?.close();
+      socket.onerror = () => socket.close();
     };
 
     connect();
     return () => {
       closed = true;
       if (retry.current) clearTimeout(retry.current);
+      const socket = current;
+      current = null; // mark all handlers stale before closing
       socket?.close();
     };
   }, [applyEvent, setConnected, resetSnapshot]);
