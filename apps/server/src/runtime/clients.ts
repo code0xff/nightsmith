@@ -20,7 +20,8 @@ export function makeChain(chainId: number, rpcUrl: string): Chain {
 }
 
 export function makePublicClient(chain: Chain, rpcUrl: string): PublicClient {
-  return createPublicClient({ chain, transport: http(rpcUrl) });
+  // cacheTime: 0 — never serve a stale block number; local blocks advance fast.
+  return createPublicClient({ chain, transport: http(rpcUrl), cacheTime: 0 });
 }
 
 export function makeWalletClient(

@@ -50,9 +50,14 @@ export const ExecutionReport = z.object({
 });
 export type ExecutionReport = z.infer<typeof ExecutionReport>;
 
+/**
+ * Result of confirming a plan. Manifest-running intents return a session and
+ * report; control intents (stop/reset/snapshot/…) return only the new state.
+ */
 export const ExecuteResponse = z.object({
-  sessionId: z.string(),
-  report: ExecutionReport,
+  sessionId: z.string().nullable().default(null),
+  report: ExecutionReport.nullable().default(null),
+  state: WorldState,
 });
 export type ExecuteResponse = z.infer<typeof ExecuteResponse>;
 
