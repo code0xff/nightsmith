@@ -3,9 +3,11 @@ import type { ServerEvent } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 
 /**
- * Single multiplexed WebSocket at /ws. On connect, a client receives a
- * snapshot (buffered logs + current state), then a live stream of log, state,
- * and execution-status events.
+ * Single multiplexed WebSocket at /ws. On connect, a client receives the
+ * current world-state snapshot only — NOT buffered logs — so a page refresh
+ * starts with a clean log console and then streams live log/state/status
+ * events. (The live console is ephemeral; the durable record is the session
+ * report on disk.)
  */
 export function registerWebSocket(app: FastifyInstance, runtime: Runtime): void {
   app.get("/ws", { websocket: true }, (socket) => {
@@ -15,9 +17,7 @@ export function registerWebSocket(app: FastifyInstance, runtime: Runtime): void 
       }
     };
 
-    const { logs, state } = runtime.bus.snapshot();
-    for (const entry of logs) send({ type: "log", entry });
-    send({ type: "state", state });
+    send({ type: "state", state: runtime.bus.snapshot().state });
 
     const unsubscribe = runtime.bus.subscribe(send);
     socket.on("close", unsubscribe);
