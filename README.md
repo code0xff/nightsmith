@@ -38,9 +38,13 @@ Headless demo (no browser):
 pnpm demo
 ```
 
-## Architecture
+## Docs
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Working guidance for contributors and agents is in [CLAUDE.md](CLAUDE.md).
+- [docs/USAGE.md](docs/USAGE.md) — install, run, prompts, CLI, dev, configuration
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layers and data flow
+- [docs/MANIFEST.md](docs/MANIFEST.md) — the World manifest format
+- [docs/SAFETY.md](docs/SAFETY.md) — the safety model
+- [CLAUDE.md](CLAUDE.md) — working guidance for contributors and agents
 
 ## Requirements
 
