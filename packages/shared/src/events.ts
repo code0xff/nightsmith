@@ -54,6 +54,13 @@ export const AccountState = z.object({
   address: z.string(),
   /** ETH balance in ether, as a decimal string. */
   ethBalance: z.string(),
+  /**
+   * The account's private key. For Nightsmith these are always Anvil's
+   * well-known PUBLIC test keys (documented by Foundry, identical everywhere) —
+   * shown so you can import the account into a wallet. Optional for
+   * backward-compat with sessions saved before this field existed.
+   */
+  privateKey: z.string().optional(),
 });
 export type AccountState = z.infer<typeof AccountState>;
 

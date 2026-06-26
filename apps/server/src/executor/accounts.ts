@@ -28,6 +28,7 @@ export async function setupAccounts(
       name: def.name,
       address: resolved.address,
       ethBalance: fromWei(balance),
+      privateKey: resolved.privateKey,
     });
     runtime.log(
       "debug",

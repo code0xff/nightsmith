@@ -3,6 +3,7 @@ import {
   createWalletClient,
   defineChain,
   http,
+  toHex,
   type Chain,
   type PublicClient,
   type WalletClient,
@@ -38,4 +39,14 @@ export function makeWalletClient(
  */
 export function accountAtIndex(mnemonic: string, addressIndex: number): HDAccount {
   return mnemonicToAccount(mnemonic, { addressIndex });
+}
+
+/**
+ * The hex private key for an HD account. These are Anvil's public test keys —
+ * shown locally so the account can be imported into a wallet; never a secret.
+ */
+export function privateKeyOf(account: HDAccount): `0x${string}` {
+  const pk = account.getHdKey().privateKey;
+  if (!pk) throw new Error("HD account has no private key");
+  return toHex(pk);
 }

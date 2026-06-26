@@ -1,4 +1,5 @@
-import { Boxes, Coins, Users } from "lucide-react";
+import { useState } from "react";
+import { Boxes, Coins, Eye, EyeOff, Users } from "lucide-react";
 import { isAddress } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -29,6 +30,31 @@ function Addr({ value }: { value: string }) {
   );
 }
 
+/** Reveal/copy an account's (public Anvil test) private key. */
+function KeyReveal({ value }: { value?: string }) {
+  const [show, setShow] = useState(false);
+  if (!value) return null;
+  return (
+    <span className="flex items-center justify-end gap-1">
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide private key" : "Show private key"}
+        title="Anvil public test key — safe to import into a wallet"
+        className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {show ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+      </button>
+      {show && (
+        <span className="font-mono text-[0.625rem] text-muted-foreground" title={value}>
+          {truncateHex(value, 6, 4)}
+        </span>
+      )}
+      <CopyButton value={value} label="Copy private key" />
+    </span>
+  );
+}
+
 export function WorldState() {
   const { accounts, contracts, tokenBalances } = useAppStore((s) => s.world);
 
@@ -54,8 +80,11 @@ export function WorldState() {
                     <td className="py-1 pr-2">
                       <Addr value={a.address} />
                     </td>
-                    <td className="py-1 text-right font-mono text-xs text-muted-foreground">
+                    <td className="py-1 pr-2 font-mono text-xs text-muted-foreground">
                       {a.ethBalance} ETH
+                    </td>
+                    <td className="py-1 text-right">
+                      <KeyReveal value={a.privateKey} />
                     </td>
                   </tr>
                 ))}

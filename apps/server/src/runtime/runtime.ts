@@ -33,6 +33,7 @@ import {
   makeChain,
   makePublicClient,
   makeWalletClient,
+  privateKeyOf,
 } from "./clients.js";
 
 interface ResolvedAccount {
@@ -40,6 +41,8 @@ interface ResolvedAccount {
   addressIndex: number;
   account: HDAccount;
   address: `0x${string}`;
+  /** Anvil public test key for this account (for wallet import; not a secret). */
+  privateKey: `0x${string}`;
 }
 
 interface ResolvedContract {
@@ -171,6 +174,7 @@ export class Runtime {
       addressIndex,
       account,
       address: account.address,
+      privateKey: privateKeyOf(account),
     };
     this.accounts.set(name, resolved);
     return resolved;
