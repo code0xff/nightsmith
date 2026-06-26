@@ -15,6 +15,7 @@ import type {
 } from "@blacksmith/shared";
 import { AppError } from "../utils/errors.js";
 import { ensureDir, sessionDir, sessionsDir } from "../utils/paths.js";
+import { reportToMarkdown } from "./report.js";
 
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
@@ -74,6 +75,7 @@ export function saveSession(args: {
   writeFileSync(join(dir, "manifest.json"), JSON.stringify(args.manifest, null, 2) + "\n");
   if (args.report) {
     writeFileSync(reportPath(args.id), JSON.stringify(args.report, null, 2) + "\n");
+    writeFileSync(join(dir, "report.md"), reportToMarkdown(args.report, args.manifest));
   }
   writeFileSync(metaPath(args.id), JSON.stringify(summary, null, 2) + "\n");
   return summary;

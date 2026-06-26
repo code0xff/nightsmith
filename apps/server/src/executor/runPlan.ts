@@ -37,6 +37,14 @@ async function runManifest(
   return { sessionId, report, state: runtime.getState() };
 }
 
+/** Public entry for replaying/resuming a saved manifest (validated + run). */
+export function runSavedManifest(
+  runtime: Runtime,
+  manifest: WorldManifest,
+): Promise<ExecuteResponse> {
+  return runManifest(runtime, manifest);
+}
+
 function manifestToReplay(runtime: Runtime): WorldManifest {
   const last = runtime.getLastManifest();
   if (last) return last;

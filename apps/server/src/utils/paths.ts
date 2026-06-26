@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /** Root data directory for sessions, manifests, logs, and reports. */
 export function dataDir(): string {
@@ -24,4 +25,22 @@ export function runtimeStateFile(): string {
 export function ensureDir(dir: string): string {
   mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+/**
+ * Locate the built web UI (apps/web/dist) so the CLI can serve it. Works from
+ * both the bundled dist and tsx-run src; returns null when no build exists
+ * (e.g. dev mode, where Vite serves the UI instead).
+ */
+export function webDistDir(): string | null {
+  if (process.env.BLACKSMITH_WEB_DIST && existsSync(process.env.BLACKSMITH_WEB_DIST)) {
+    return process.env.BLACKSMITH_WEB_DIST;
+  }
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(here, "../../web/dist"), // bundled: apps/server/dist -> apps/web/dist
+    join(here, "../../../web/dist"), // src/utils -> apps/web/dist
+    join(process.cwd(), "apps/web/dist"),
+  ];
+  return candidates.find((dir) => existsSync(join(dir, "index.html"))) ?? null;
 }
