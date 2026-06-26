@@ -50,3 +50,13 @@ export const AccountRef = z
     message: "must be an account name (letter-leading) or a 0x address",
   });
 export type AccountRef = z.infer<typeof AccountRef>;
+
+/**
+ * A named account (signer-capable). Like Identifier but explicitly NOT an
+ * address — so a manifest can't declare an account literally named "0x…" and
+ * smuggle a non-signable address into a signer slot.
+ */
+export const AccountName = Identifier.refine((s) => !isAddress(s), {
+  message: "account name must not look like a 0x address",
+});
+export type AccountName = z.infer<typeof AccountName>;

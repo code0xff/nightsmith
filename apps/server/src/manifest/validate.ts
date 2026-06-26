@@ -9,6 +9,19 @@ import { AppError } from "../utils/errors.js";
 export function validateManifest(input: unknown): WorldManifest {
   const manifest = parseManifest(input);
 
+  // Canonicalize literal-address refs to lowercase so the same address in
+  // different casings can't desync recipient vs. assertion balances.
+  for (const action of manifest.actions) {
+    if ((action.type === "mint" || action.type === "transfer") && isAddress(action.to)) {
+      action.to = action.to.toLowerCase();
+    }
+  }
+  for (const assertion of manifest.assertions) {
+    if (assertion.type === "tokenBalance" && isAddress(assertion.account)) {
+      assertion.account = assertion.account.toLowerCase();
+    }
+  }
+
   const accountNames = new Set(manifest.accounts.map((a) => a.name));
   const contractIds = new Set(manifest.contracts.map((c) => c.id));
   const problems: string[] = [];

@@ -1,4 +1,5 @@
 import { Boxes, Coins, Users } from "lucide-react";
+import { isAddress } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { useAppStore } from "@/state/useAppStore";
@@ -93,7 +94,9 @@ export function WorldState() {
               <tbody>
                 {tokenBalances.map((t) => (
                   <tr key={`${t.contractId}-${t.account}`} className="border-t">
-                    <td className="py-1 pr-2 font-medium">{t.account}</td>
+                    <td className="py-1 pr-2 font-medium">
+                      {isAddress(t.account) ? <Addr value={t.account} /> : t.account}
+                    </td>
                     <td className="py-1 text-right font-mono text-xs">
                       {t.balance} {t.symbol}
                     </td>

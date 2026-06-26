@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AccountRef, DecimalAmount, Identifier } from "./types.js";
+import { AccountName, AccountRef, DecimalAmount, Identifier } from "./types.js";
 
 /**
  * The World manifest is Nightsmith's internal source of truth. It fully and
@@ -32,7 +32,7 @@ export type NetworkConfig = z.infer<typeof NetworkConfig>;
 
 export const AccountDef = z.object({
   /** Human name, e.g. "deployer", "Alice", "Bob". */
-  name: Identifier,
+  name: AccountName,
   /** Index into Anvil's deterministic dev accounts (0-9). These are public test keys. */
   addressIndex: z.number().int().min(0).max(9),
   /** Local ETH to ensure the account holds, as a decimal ether string. */
@@ -60,7 +60,7 @@ export const DeployContractAction = z.object({
   /** Refers to a ContractDef.id. */
   contractId: Identifier,
   /** Account name that deploys (and owns) the contract. */
-  deployer: Identifier,
+  deployer: AccountName,
 });
 
 export const MintAction = z.object({
@@ -74,8 +74,8 @@ export const MintAction = z.object({
 export const TransferAction = z.object({
   type: z.literal("transfer"),
   contractId: Identifier,
-  /** Sender must be a named Anvil account (Blacksmith can only sign for those). */
-  from: Identifier,
+  /** Sender must be a named Anvil account (Nightsmith can only sign for those). */
+  from: AccountName,
   /** Recipient: a named account or a literal 0x address. */
   to: AccountRef,
   amount: DecimalAmount,

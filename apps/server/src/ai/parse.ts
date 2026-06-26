@@ -28,14 +28,20 @@ const hasHangul = (s: string): boolean => /[가-힣]/.test(s);
 // A recipient reference: a capitalized name OR a literal 20-byte 0x address.
 const REF = "([A-Z][a-zA-Z]+|0x[0-9a-fA-F]{40})";
 
+// Canonicalize addresses to lowercase so mixed-casing of the same address
+// can't create two distinct balance/assertion slots.
+const canon = (ref: string): string =>
+  /^0x[0-9a-fA-F]{40}$/i.test(ref) ? ref.toLowerCase() : ref;
+
 /** Extract initial balances and explicit "mint N to <ref>" amounts, in order. */
 export function parseBalances(prompt: string): Array<{ ref: string; amount: string }> {
   const out: Array<{ ref: string; amount: string }> = [];
   const seen = new Set<string>();
   const add = (ref: string, amount: string) => {
-    if (!seen.has(ref)) {
-      seen.add(ref);
-      out.push({ ref, amount: num(amount) });
+    const r = canon(ref);
+    if (!seen.has(r)) {
+      seen.add(r);
+      out.push({ ref: r, amount: num(amount) });
     }
   };
 
@@ -71,18 +77,18 @@ export function parseTransfer(
     `([A-Z][a-zA-Z]+)\\s+sends?\\s+${REF}\\s+([\\d,]+(?:\\.\\d+)?)`,
     "i",
   ).exec(prompt);
-  if (sends) return { from: sends[1]!, to: sends[2]!, amount: num(sends[3]!) };
+  if (sends) return { from: sends[1]!, to: canon(sends[2]!), amount: num(sends[3]!) };
 
   const fromTo = new RegExp(
     `transfers?\\s+([\\d,]+(?:\\.\\d+)?)[^.]*?from\\s+([A-Z][a-zA-Z]+)\\s+to\\s+${REF}`,
     "i",
   ).exec(prompt);
-  if (fromTo) return { from: fromTo[2]!, to: fromTo[3]!, amount: num(fromTo[1]!) };
+  if (fromTo) return { from: fromTo[2]!, to: canon(fromTo[3]!), amount: num(fromTo[1]!) };
 
   const arrow = new RegExp(
     `([A-Z][a-zA-Z]+)\\s*(?:->|→)\\s*${REF}\\s*:?\\s*([\\d,]+(?:\\.\\d+)?)`,
   ).exec(prompt);
-  if (arrow) return { from: arrow[1]!, to: arrow[2]!, amount: num(arrow[3]!) };
+  if (arrow) return { from: arrow[1]!, to: canon(arrow[2]!), amount: num(arrow[3]!) };
 
   const korean =
     /([A-Z][a-zA-Z]+)\s*(?:가|이|는|은)?\s*([A-Z][a-zA-Z]+)(?:에게|한테)\s*([\d,]+(?:\.\d+)?)/.exec(
@@ -101,7 +107,7 @@ export function parseBalanceChange(
     `(?:change|set|make|update)\\s+${REF}(?:'s)?\\s+(?:initial\\s+)?balance\\s+(?:to\\s+)?([\\d,]+(?:\\.\\d+)?)`,
     "i",
   ).exec(prompt);
-  if (english) return { ref: english[1]!, amount: num(english[2]!) };
+  if (english) return { ref: canon(english[1]!), amount: num(english[2]!) };
 
   const korean =
     /([A-Z][a-zA-Z]+)\s*의\s*(?:초기\s*)?잔액을?\s*([\d,]+(?:\.\d+)?)/.exec(prompt);

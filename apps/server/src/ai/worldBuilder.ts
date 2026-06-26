@@ -152,6 +152,16 @@ export function deriveParams(manifest: WorldManifest): WorldParams {
     initial: formatUnits(raw, token.decimals),
   }));
 
+  // Keep refs that only appear as assertion targets (no mint) so a later
+  // modify/replay doesn't silently drop them.
+  const known = new Set(accounts.map((a) => a.ref));
+  for (const assertion of manifest.assertions) {
+    if (assertion.type === "tokenBalance" && !known.has(assertion.account)) {
+      known.add(assertion.account);
+      accounts.push({ ref: assertion.account, initial: "0" });
+    }
+  }
+
   const transferAction = manifest.actions.find((a) => a.type === "transfer");
   const transfer =
     transferAction && transferAction.type === "transfer"
