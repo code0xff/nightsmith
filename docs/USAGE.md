@@ -76,29 +76,28 @@ logs). Override with `NIGHTSMITH_DATA_DIR`.
 
 ## AI provider
 
-By default Nightsmith uses the **mock** planner — a deterministic, offline
-parser that needs no key or network. To use **OpenAI (ChatGPT)** instead:
+The planner is selected **automatically by availability** — there is no manual
+selection. The order is:
 
-- In the cockpit header, click the **AI** badge → choose *OpenAI* → paste an API
-  key (`sk-…`) → Save. The key is stored locally at
-  `~/.nightsmith/credentials.json` (mode 0600) and is sent only to OpenAI when
-  generating a plan — never logged, never returned by the API.
-- Or set it via environment: `NIGHTSMITH_AI_PROVIDER=openai OPENAI_API_KEY=sk-…`
-  (env always wins over the stored key). Model: `NIGHTSMITH_OPENAI_MODEL`
-  (default `gpt-5.5`).
+1. **OpenAI** — used if an OpenAI API key is set.
+2. **Codex CLI** — used if `codex` is on your PATH (no key; reuses your existing
+   Codex/ChatGPT login). Runs `codex exec` read-only, ephemeral, in a throwaway
+   working dir, as a pure plan generator.
+3. **Mock** — the deterministic, offline default; always available, no key/network.
 
-To use a **no-key** path, pick **Codex CLI** in the same dialog (enabled when
-`codex` is on your PATH). It runs `codex exec` non-interactively and reuses your
-existing Codex/ChatGPT login — no API key, no extra billing setup. Codex runs
-read-only, ephemeral, and in a throwaway working dir, so it acts as a pure plan
-generator.
+The cockpit header's **AI** badge shows which provider is active. Click it to see
+the resolution and to add/clear the OpenAI key. The only configuration is the
+key itself:
 
-**Fallback:** providers degrade gracefully by availability — OpenAI (if a key is
-present) → Codex CLI (if installed) → the mock planner (always). The log console
-shows which provider produced each plan (e.g. "Plan generated via codex").
+- Add it in the cockpit (badge → enter `sk-…` → Save), stored at
+  `~/.nightsmith/credentials.json` (mode 0600); or
+- set `OPENAI_API_KEY` in the environment (env wins over the stored key).
+- Model: `NIGHTSMITH_OPENAI_MODEL` (default `gpt-5.5`).
 
-The provider only ever produces a reviewable plan; the deterministic executor
-still runs it after validation and confirmation.
+The key is sent only to OpenAI when generating a plan — never logged, never
+returned by the API. The log console shows which provider produced each plan
+(e.g. "Plan generated via codex"). The provider only ever produces a reviewable
+plan; the deterministic executor still runs it after validation and confirmation.
 
 > **Note on "Sign in with ChatGPT":** OAuth login with a ChatGPT account does
 > not grant access to the OpenAI API — API usage is billed separately and
@@ -114,8 +113,7 @@ still runs it after validation and confirmation.
 | `NIGHTSMITH_HOST` | `127.0.0.1` | Server bind address |
 | `NIGHTSMITH_ANVIL_PORT` | `8545` | Anvil RPC port |
 | `NIGHTSMITH_DATA_DIR` | `~/.nightsmith` | Session store location |
-| `NIGHTSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `codex` |
-| `OPENAI_API_KEY` | — | OpenAI key (overrides the stored key) |
+| `OPENAI_API_KEY` | — | OpenAI key (enables the OpenAI provider; overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
 | `NIGHTSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `NIGHTSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |

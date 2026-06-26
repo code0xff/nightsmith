@@ -1,5 +1,5 @@
-import "./loadEnv.js"; // must be first: load .env before config/env reads
-import { generatePlan } from "./ai/planner.js";
+import { Plan } from "@nightsmith/shared";
+import { mockProvider } from "./ai/providers/mock.js";
 import { runPlan } from "./executor/runPlan.js";
 import { Runtime } from "./runtime/runtime.js";
 
@@ -16,13 +16,13 @@ runtime.bus.subscribe((e) => {
 });
 
 process.stdout.write(`Prompt: ${DEMO_PROMPT}\n\n`);
-const { plan, provider } = await generatePlan({
-  prompt: DEMO_PROMPT,
-  previousManifest: null,
-  running: false,
-});
+// Force the deterministic mock planner so the demo is reproducible regardless
+// of whether an OpenAI key or the Codex CLI is available on this machine.
+const plan = Plan.parse(
+  await mockProvider.generate({ prompt: DEMO_PROMPT, previousManifest: null, running: false }),
+);
 
-process.stdout.write(`Plan (via ${provider}): ${plan.summary}\n`);
+process.stdout.write(`Plan (deterministic mock): ${plan.summary}\n`);
 for (const step of plan.steps) process.stdout.write(`  • ${step}\n`);
 process.stdout.write("\nExecuting…\n");
 

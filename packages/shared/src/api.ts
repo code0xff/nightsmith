@@ -112,20 +112,21 @@ export const ProviderName = z.enum(["mock", "openai", "codex"]);
 export type ProviderName = z.infer<typeof ProviderName>;
 
 export const AiStatus = z.object({
+  /**
+   * The provider that will actually run now, auto-resolved by availability:
+   * OpenAI (if a key is set) → Codex (if the CLI is installed) → mock.
+   */
   provider: ProviderName,
   /** Whether an OpenAI key is available (env or stored). Never the key itself. */
   openaiConnected: z.boolean(),
   /** Whether the Codex CLI is installed (usable as a no-key fallback). */
   codexAvailable: z.boolean(),
-  /** Provider is pinned by NIGHTSMITH_AI_PROVIDER; the UI can't override it. */
-  envManaged: z.boolean(),
   model: z.string(),
   providers: z.array(ProviderName),
 });
 export type AiStatus = z.infer<typeof AiStatus>;
 
 export const AiConnectRequest = z.object({
-  provider: ProviderName.optional(),
   /** OpenAI API key to store locally; "" clears it. Never returned by the API. */
   openaiApiKey: z.string().optional(),
 });

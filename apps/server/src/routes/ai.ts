@@ -1,24 +1,22 @@
 import type { FastifyInstance } from "fastify";
 import { AiConnectRequest, type AiStatus } from "@nightsmith/shared";
 import {
+  clearOpenAiKey,
   isOpenAiConnected,
-  isProviderEnvManaged,
-  resolveProvider,
-  setAiConfig,
+  setOpenAiKey,
 } from "../ai/credentials.js";
 import { isCodexAvailable } from "../ai/providers/codex.js";
-import { PROVIDER_NAMES } from "../ai/planner.js";
+import { activeProvider, PROVIDER_NAMES } from "../ai/planner.js";
 
 const MODEL = process.env.NIGHTSMITH_OPENAI_MODEL ?? "gpt-5.5";
 
 async function status(): Promise<AiStatus> {
   return {
-    provider: resolveProvider(),
+    provider: await activeProvider(),
     openaiConnected: isOpenAiConnected(),
     codexAvailable: await isCodexAvailable(),
-    envManaged: isProviderEnvManaged(),
     model: MODEL,
-    providers: PROVIDER_NAMES as AiStatus["providers"],
+    providers: PROVIDER_NAMES,
   };
 }
 
@@ -26,17 +24,15 @@ export function registerAiRoutes(app: FastifyInstance): void {
   // Status never includes the key — only whether one is present.
   app.get("/api/ai", async (): Promise<AiStatus> => status());
 
+  // The only thing the user can set is the OpenAI key; provider is automatic.
   app.post("/api/ai/connect", async (req): Promise<AiStatus> => {
     const body = AiConnectRequest.parse(req.body);
-    setAiConfig({
-      ...(body.provider ? { provider: body.provider } : {}),
-      ...(body.openaiApiKey !== undefined ? { openaiApiKey: body.openaiApiKey } : {}),
-    });
+    if (body.openaiApiKey !== undefined) setOpenAiKey(body.openaiApiKey);
     return status();
   });
 
   app.post("/api/ai/disconnect", async (): Promise<AiStatus> => {
-    setAiConfig({ provider: "mock", openaiApiKey: "" });
+    clearOpenAiKey();
     return status();
   });
 }

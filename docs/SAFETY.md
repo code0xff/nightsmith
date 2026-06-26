@@ -46,8 +46,7 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
 | --- | --- |
 | `NIGHTSMITH_ALLOW_FORK=true` | Permit `network.forkUrl` (fork a remote chain) |
 | `NIGHTSMITH_ALLOW_BROADCAST=true` | Permit `network.broadcast` beyond the local node |
-| `NIGHTSMITH_AI_PROVIDER=openai` | Use the OpenAI provider (needs `OPENAI_API_KEY` or the cockpit Connect flow) |
-| `NIGHTSMITH_AI_PROVIDER=codex` | Use the local Codex CLI as a no-key planner (reuses your Codex/ChatGPT login) |
+| `OPENAI_API_KEY=sk-…` | Enable the OpenAI provider (otherwise: Codex if installed, else mock) |
 
 These exist for advanced, deliberate use. The defaults are local-only and
 secret-free.
