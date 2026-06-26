@@ -1,4 +1,4 @@
-import type { Plan, WorldManifest } from "@nightsmith/shared";
+import type { Plan, UploadedArtifact, WorldManifest } from "@nightsmith/shared";
 
 export interface PlanInput {
   /** The user's natural-language request (already secret-scanned). */
@@ -7,6 +7,8 @@ export interface PlanInput {
   previousManifest: WorldManifest | null;
   /** Whether a localnet is currently running. */
   running: boolean;
+  /** Uploaded custom contracts available to deploy (name + abi). */
+  artifacts: UploadedArtifact[];
 }
 
 /**

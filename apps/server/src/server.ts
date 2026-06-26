@@ -12,6 +12,7 @@ import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerExportRoutes } from "./routes/export.js";
 import { registerAiRoutes } from "./routes/ai.js";
 import { registerAnvilRoutes } from "./routes/anvil.js";
+import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerWebSocket } from "./ws/stream.js";
 import { AppError, errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
@@ -79,6 +80,7 @@ export async function buildServer(): Promise<NightsmithServer> {
   registerExportRoutes(app);
   registerAiRoutes(app);
   registerAnvilRoutes(app, runtime);
+  registerArtifactRoutes(app);
 
   // Serve the built web cockpit (when present) with an SPA fallback.
   const webDist = webDistDir();

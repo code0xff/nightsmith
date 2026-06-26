@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Plan } from "./plan.js";
 import { WorldManifest } from "./manifest.js";
 import { AssertionResult, WorldState } from "./events.js";
+import { HexString } from "./types.js";
 
 /**
  * REST API request/response shapes. The cockpit issues commands over these;
@@ -147,6 +148,25 @@ export const AnvilStatus = z.object({
   installToken: z.string(),
 });
 export type AnvilStatus = z.infer<typeof AnvilStatus>;
+
+// Uploaded contract artifacts (custom contracts)
+export const UploadedArtifact = z.object({
+  name: z.string().min(1).max(64),
+  abi: z.array(z.record(z.string(), z.unknown())).min(1),
+  bytecode: HexString,
+});
+export type UploadedArtifact = z.infer<typeof UploadedArtifact>;
+
+export const ArtifactSummary = z.object({
+  name: z.string(),
+  functions: z.array(z.string()).default([]),
+});
+export type ArtifactSummary = z.infer<typeof ArtifactSummary>;
+
+export const ArtifactListResponse = z.object({
+  artifacts: z.array(ArtifactSummary).default([]),
+});
+export type ArtifactListResponse = z.infer<typeof ArtifactListResponse>;
 
 // Generic error envelope
 export const ApiError = z.object({

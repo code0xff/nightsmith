@@ -5,6 +5,8 @@ import {
 } from "@nightsmith/shared";
 import { generatePlan } from "../ai/planner.js";
 import { getSession } from "../sessions/store.js";
+import { listArtifacts } from "../artifacts/store.js";
+import { hydrateArtifacts } from "../artifacts/hydrate.js";
 import { assertPromptHasNoSecrets } from "../safety/validateSecrets.js";
 import type { Runtime } from "../runtime/runtime.js";
 
@@ -27,12 +29,19 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
         prompt: body.prompt,
         previousManifest,
         running: runtime.isRunning(),
+        artifacts: listArtifacts(),
       },
       (level, message) => runtime.log(level, message, "planner"),
     );
-    runtime.setExecution("awaiting-confirmation");
-    runtime.log("info", `Plan generated via ${provider}: ${plan.summary}`, "planner");
 
-    return { planId: `plan-${++planSeq}`, plan };
+    // Fill abi+bytecode for any artifact contracts the plan references by name.
+    const finalPlan = plan.manifest
+      ? { ...plan, manifest: hydrateArtifacts(plan.manifest) }
+      : plan;
+
+    runtime.setExecution("awaiting-confirmation");
+    runtime.log("info", `Plan generated via ${provider}: ${finalPlan.summary}`, "planner");
+
+    return { planId: `plan-${++planSeq}`, plan: finalPlan };
   });
 }

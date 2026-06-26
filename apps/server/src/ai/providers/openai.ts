@@ -1,7 +1,11 @@
 import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { AppError, errorMessage } from "../../utils/errors.js";
 import { resolveOpenAiKey } from "../credentials.js";
-import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/plannerPrompt.js";
+import {
+  PLANNER_JSON_CONTRACT,
+  PLANNER_SYSTEM_PROMPT,
+  summarizeArtifacts,
+} from "../prompts/plannerPrompt.js";
 import type { AiProvider, PlanInput } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
@@ -20,6 +24,8 @@ function buildUserContent(input: PlanInput): string {
       `Previous manifest (for modify/replay context):\n${JSON.stringify(input.previousManifest)}`,
     );
   }
+  const artifacts = summarizeArtifacts(input.artifacts);
+  if (artifacts) parts.push(artifacts);
   parts.push(PLANNER_JSON_CONTRACT);
   return parts.join("\n\n");
 }

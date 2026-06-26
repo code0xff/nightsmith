@@ -58,7 +58,29 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
 
 Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest. For createWorld/modifyWorld/runScenario set "manifest" and leave control/explanation null. For control set "control" only. For explain set "explanation" only.
 
-Recipients: a mint "to", a transfer "to", and an assertion "account" may be EITHER a named account declared in accounts[] OR a literal 20-byte 0x address. If the user gives a concrete 0x address, use it VERBATIM — never replace it with a named account, and do not add it to accounts[]. A transfer "from" and a deployContract "deployer" MUST be named accounts (Blacksmith can only sign for those).
+Recipients: a mint "to", a transfer "to", and an assertion "account" may be EITHER a named account declared in accounts[] OR a literal 20-byte 0x address. If the user gives a concrete 0x address, use it VERBATIM — never replace it with a named account, and do not add it to accounts[]. A transfer "from" and a deployContract "deployer" MUST be named accounts (Nightsmith can only sign for those).
+
+Custom contracts: to deploy a user-uploaded contract, add a contract { "id": "...", "kind": "artifact", "name": "<exact uploaded name>" } — do NOT include abi/bytecode (the server fills them by name). Deploy with a deployContract action carrying constructor "args". Call functions via { "type":"call", "contractId", "function", "args", "from" (named account), "value"? } and verify with { "type":"callResult", "contractId", "function", "args", "expected" }. Arg values: integers as decimal strings, addresses/bytes as 0x strings, bool true/false, arrays as JSON arrays (no tuples/structs). Only reference uploaded artifacts listed below.
 
 Example (prompt: "Alice has 1000 USDC, Bob has 100 USDC, Alice sends Bob 10 USDC, verify"):
 {"intent":"createWorld","summary":"Local USDC world; Alice 1000, Bob 100; Alice sends Bob 10; verify balances.","assumptions":["USDC is a local MockERC20 (6 decimals)."],"steps":["Start local Anvil","Create accounts: deployer, Alice, Bob","Deploy usdc","Mint 1000 to Alice","Mint 100 to Bob","Transfer 10 Alice -> Bob"],"expectedStateChanges":["Alice: 990 USDC","Bob: 110 USDC"],"assertions":["Alice holds 990 USDC","Bob holds 110 USDC"],"safetyNotes":["Local Anvil only.","MockERC20, not a real token."],"manifest":{"version":1,"name":"USDC payment world","createdAt":"2026-01-01T00:00:00.000Z","network":{"kind":"anvil-local","chainId":31337,"port":8545,"forkUrl":null,"broadcast":false},"accounts":[{"name":"deployer","addressIndex":0,"fundEth":"0"},{"name":"Alice","addressIndex":1,"fundEth":"0"},{"name":"Bob","addressIndex":2,"fundEth":"0"}],"contracts":[{"id":"usdc","kind":"MockERC20","name":"Mock USDC","symbol":"USDC","decimals":6}],"actions":[{"type":"deployContract","contractId":"usdc","deployer":"deployer"},{"type":"mint","contractId":"usdc","to":"Alice","amount":"1000"},{"type":"mint","contractId":"usdc","to":"Bob","amount":"100"},{"type":"transfer","contractId":"usdc","from":"Alice","to":"Bob","amount":"10"}],"assertions":[{"type":"tokenBalance","contractId":"usdc","account":"Alice","expected":"990"},{"type":"tokenBalance","contractId":"usdc","account":"Bob","expected":"110"}]},"control":null,"explanation":null,"uiPreview":{"title":"Create USDC world","description":"Alice 1000, Bob 100, transfer 10","accent":"default"}}`;
+
+/** Compact ABI summary of uploaded artifacts, appended to the user turn. */
+export function summarizeArtifacts(
+  artifacts: import("@nightsmith/shared").UploadedArtifact[],
+): string {
+  if (artifacts.length === 0) return "";
+  const sig = (i: { name?: string; inputs?: { type?: string }[] }) =>
+    `${i.name}(${(i.inputs ?? []).map((p) => p.type).join(",")})`;
+  const lines = artifacts.map((a) => {
+    const items = a.abi as Array<{
+      type?: string;
+      name?: string;
+      inputs?: { type?: string }[];
+    }>;
+    const ctor = items.find((i) => i.type === "constructor");
+    const fns = items.filter((i) => i.type === "function");
+    return `- ${a.name}: constructor(${(ctor?.inputs ?? []).map((p) => p.type).join(",")}); functions: ${fns.map(sig).join(", ") || "(none)"}`;
+  });
+  return `Available uploaded contracts (reference by name):\n${lines.join("\n")}`;
+}

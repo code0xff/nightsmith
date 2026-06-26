@@ -19,7 +19,12 @@ process.stdout.write(`Prompt: ${DEMO_PROMPT}\n\n`);
 // Force the deterministic mock planner so the demo is reproducible regardless
 // of whether an OpenAI key or the Codex CLI is available on this machine.
 const plan = Plan.parse(
-  await mockProvider.generate({ prompt: DEMO_PROMPT, previousManifest: null, running: false }),
+  await mockProvider.generate({
+    prompt: DEMO_PROMPT,
+    previousManifest: null,
+    running: false,
+    artifacts: [],
+  }),
 );
 
 process.stdout.write(`Plan (deterministic mock): ${plan.summary}\n`);

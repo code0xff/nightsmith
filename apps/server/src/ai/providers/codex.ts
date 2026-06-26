@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { AppError } from "../../utils/errors.js";
-import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/plannerPrompt.js";
+import {
+  PLANNER_JSON_CONTRACT,
+  PLANNER_SYSTEM_PROMPT,
+  summarizeArtifacts,
+} from "../prompts/plannerPrompt.js";
 import type { AiProvider, PlanInput } from "./types.js";
 
 const CODEX_TIMEOUT_MS = 120_000;
@@ -42,6 +46,8 @@ function buildPrompt(input: PlanInput): string {
   if (input.previousManifest) {
     parts.push(`Previous manifest:\n${JSON.stringify(input.previousManifest)}`);
   }
+  const artifacts = summarizeArtifacts(input.artifacts);
+  if (artifacts) parts.push(artifacts);
   parts.push("Output ONLY the JSON object — no prose, no code fences, no tool calls.");
   return parts.join("\n\n");
 }

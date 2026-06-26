@@ -73,9 +73,12 @@ export type MockErc20Def = z.infer<typeof MockErc20Def>;
 export const ArtifactContractDef = z.object({
   id: Identifier,
   kind: z.literal("artifact"),
+  /** Must match an uploaded artifact's name; the server fills abi+bytecode. */
   name: z.string().min(1),
-  abi: z.array(z.record(z.string(), z.unknown())).min(1),
-  bytecode: HexString,
+  /** abi/bytecode may be empty in a freshly planned manifest; the server
+   *  "hydrates" them from the uploaded artifact, and execution requires them. */
+  abi: z.array(z.record(z.string(), z.unknown())).default([]),
+  bytecode: HexString.default("0x"),
 });
 export type ArtifactContractDef = z.infer<typeof ArtifactContractDef>;
 

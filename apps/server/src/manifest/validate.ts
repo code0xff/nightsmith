@@ -56,6 +56,13 @@ export function validateManifest(input: unknown): WorldManifest {
     if (assertion.type === "tokenBalance") requireRecipient(assertion.account, where);
   }
 
+  // Uploaded artifacts must be hydrated (abi+bytecode) before execution.
+  for (const [i, c] of manifest.contracts.entries()) {
+    if (c.kind === "artifact" && (c.abi.length === 0 || c.bytecode === "0x")) {
+      problems.push(`contracts[${i}] (${c.id}): artifact "${c.name}" is missing abi/bytecode`);
+    }
+  }
+
   // Duplicate ids/names are a determinism hazard.
   if (accountNames.size !== manifest.accounts.length) {
     problems.push("duplicate account names");
