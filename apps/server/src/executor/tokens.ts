@@ -65,6 +65,9 @@ export async function mint(
     status: receipt.status === "success" ? "success" : "reverted",
     gasUsed: receipt.gasUsed.toString(),
   });
+  if (receipt.status !== "success") {
+    throw new Error(`mint of ${amount} ${contract.symbol} to ${toName} reverted`);
+  }
   await refreshTokenBalance(runtime, contractId, toName);
   runtime.log(
     "success",
@@ -104,6 +107,11 @@ export async function transfer(
     status: receipt.status === "success" ? "success" : "reverted",
     gasUsed: receipt.gasUsed.toString(),
   });
+  if (receipt.status !== "success") {
+    throw new Error(
+      `transfer of ${amount} ${contract.symbol} from ${fromName} to ${toName} reverted`,
+    );
+  }
   await refreshTokenBalance(runtime, contractId, fromName);
   await refreshTokenBalance(runtime, contractId, toName);
   runtime.log(

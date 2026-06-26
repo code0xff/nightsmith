@@ -19,7 +19,13 @@ import { getChainStatus } from "../anvil/status.js";
 import { revertSnapshot, takeSnapshot } from "../anvil/snapshot.js";
 import { ANVIL_MNEMONIC } from "../config.js";
 import { AppError } from "../utils/errors.js";
+import { Mutex } from "../utils/mutex.js";
 import { EventBus } from "./bus.js";
+
+/** Redact anything resembling a private key from Anvil's stdout before logging. */
+function redactSecrets(line: string): string {
+  return line.replace(/0x[0-9a-fA-F]{64}/g, "0x⟨redacted⟩");
+}
 import {
   accountAtIndex,
   makeChain,
@@ -52,6 +58,7 @@ interface ResolvedContract {
  */
 export class Runtime {
   readonly bus = new EventBus();
+  private readonly mutex = new Mutex();
 
   private anvil: AnvilProcess | null = null;
   private chain: Chain | null = null;
@@ -71,8 +78,17 @@ export class Runtime {
     this.bus.log(level, message, scope);
   }
 
+  /**
+   * Serialize a runtime-mutating operation. The execute and localnet routes
+   * run through this so concurrent requests can't both spawn/own Anvil.
+   */
+  runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    return this.mutex.runExclusive(fn);
+  }
+
   getState(): WorldState {
-    return this.state;
+    // Hand out a clone so callers (reports, responses) can't mutate live state.
+    return structuredClone(this.state);
   }
 
   /** Remember the most recently executed manifest (for modify/replay). */
@@ -220,7 +236,7 @@ export class Runtime {
 
     try {
       await anvil.start((line, stream) =>
-        this.log(stream === "err" ? "warning" : "debug", line, "anvil"),
+        this.log(stream === "err" ? "warning" : "debug", redactSecrets(line), "anvil"),
       );
     } catch (err) {
       this.patchLocalnet({ status: "error" });

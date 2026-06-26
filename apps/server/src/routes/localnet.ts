@@ -20,31 +20,33 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
 
   app.post("/api/localnet", async (req): Promise<LocalnetActionResponse> => {
     const body = LocalnetActionRequest.parse(req.body);
-    let snapshotId: string | undefined;
 
-    switch (body.action) {
-      case "start":
-        await runtime.startLocalnet(defaultNetwork());
-        break;
-      case "stop":
-        await runtime.stopLocalnet();
-        break;
-      case "reset":
-        if (runtime.isRunning()) await runtime.stopLocalnet();
-        await runtime.startLocalnet(defaultNetwork());
-        break;
-      case "snapshot":
-        snapshotId = await runtime.snapshot();
-        break;
-      case "revert":
-        await runtime.revert(body.snapshotId);
-        break;
-    }
-
-    return {
-      ok: true,
-      state: runtime.getState(),
-      ...(snapshotId ? { snapshotId } : {}),
-    };
+    // Serialize against execution and other control actions (single Anvil owner).
+    return runtime.runExclusive(async () => {
+      let snapshotId: string | undefined;
+      switch (body.action) {
+        case "start":
+          await runtime.startLocalnet(defaultNetwork());
+          break;
+        case "stop":
+          await runtime.stopLocalnet();
+          break;
+        case "reset":
+          if (runtime.isRunning()) await runtime.stopLocalnet();
+          await runtime.startLocalnet(defaultNetwork());
+          break;
+        case "snapshot":
+          snapshotId = await runtime.snapshot();
+          break;
+        case "revert":
+          await runtime.revert(body.snapshotId);
+          break;
+      }
+      return {
+        ok: true,
+        state: runtime.getState(),
+        ...(snapshotId ? { snapshotId } : {}),
+      };
+    });
   });
 }

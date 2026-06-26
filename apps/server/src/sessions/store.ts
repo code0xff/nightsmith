@@ -16,6 +16,16 @@ import type {
 import { AppError } from "../utils/errors.js";
 import { ensureDir, sessionDir, sessionsDir } from "../utils/paths.js";
 
+const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+
+/** Reject session ids that could escape the sessions directory. */
+function assertSafeId(id: string): string {
+  if (!SAFE_ID.test(id)) {
+    throw new AppError(`Invalid session id "${id}"`, 400);
+  }
+  return id;
+}
+
 function slugify(name: string): string {
   return (
     name
@@ -31,9 +41,9 @@ export function newSessionId(name: string): string {
   return `${slugify(name)}-${Date.now().toString(36)}`;
 }
 
-const metaPath = (id: string) => join(sessionDir(id), "meta.json");
-const manifestPath = (id: string) => join(sessionDir(id), "manifest.json");
-const reportPath = (id: string) => join(sessionDir(id), "report.json");
+const metaPath = (id: string) => join(sessionDir(assertSafeId(id)), "meta.json");
+const manifestPath = (id: string) => join(sessionDir(assertSafeId(id)), "manifest.json");
+const reportPath = (id: string) => join(sessionDir(assertSafeId(id)), "report.json");
 
 function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
@@ -45,7 +55,7 @@ export function saveSession(args: {
   manifest: WorldManifest;
   report?: ExecutionReport | null;
 }): SessionSummary {
-  const dir = ensureDir(sessionDir(args.id));
+  const dir = ensureDir(sessionDir(assertSafeId(args.id)));
   const now = new Date().toISOString();
 
   let createdAt = now;
@@ -102,7 +112,7 @@ export function latestSession(): SessionSummary | null {
 }
 
 export function deleteSession(id: string): void {
-  const dir = sessionDir(id);
+  const dir = sessionDir(assertSafeId(id));
   if (!existsSync(dir)) throw new AppError(`Session "${id}" not found`, 404);
   rmSync(dir, { recursive: true, force: true });
 }

@@ -27,6 +27,9 @@ export async function deployMockErc20(
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`Deployment of ${def.id} reverted`);
+  }
   const address = receipt.contractAddress;
   if (!address) {
     throw new Error(`Deployment of ${def.id} produced no contract address`);

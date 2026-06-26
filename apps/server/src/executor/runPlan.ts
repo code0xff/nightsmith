@@ -4,6 +4,8 @@ import {
   type Plan,
   type WorldManifest,
 } from "@blacksmith/shared";
+import { validateManifest } from "../manifest/validate.js";
+import { validateNetwork } from "../safety/validateNetwork.js";
 import { validatePlanForExecution } from "../safety/validatePlan.js";
 import {
   getSession,
@@ -20,8 +22,13 @@ const defaultNetwork = () => NetworkConfig.parse({ kind: "anvil-local" });
 /** Run a manifest, persisting the session before and after execution. */
 async function runManifest(
   runtime: Runtime,
-  manifest: WorldManifest,
+  rawManifest: WorldManifest,
 ): Promise<ExecuteResponse> {
+  // Re-validate here too: replay/resume load manifests straight from disk and
+  // must not bypass shape/semantic/network safety checks.
+  const manifest = validateManifest(rawManifest);
+  validateNetwork(manifest.network);
+
   const sessionId = newSessionId(manifest.name);
   saveSession({ id: sessionId, manifest });
   const report = await executeManifest(runtime, manifest, { sessionId });
