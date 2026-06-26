@@ -5,7 +5,7 @@ import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/planner
 import type { AiProvider, PlanInput } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-4o";
+const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-5.5";
 const REQUEST_TIMEOUT_MS = 60_000;
 
 interface ChatMessage {

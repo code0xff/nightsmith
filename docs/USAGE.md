@@ -78,7 +78,7 @@ parser that needs no key or network. To use **OpenAI (ChatGPT)** instead:
   generating a plan — never logged, never returned by the API.
 - Or set it via environment: `BLACKSMITH_AI_PROVIDER=openai OPENAI_API_KEY=sk-…`
   (env always wins over the stored key). Model: `BLACKSMITH_OPENAI_MODEL`
-  (default `gpt-4o`).
+  (default `gpt-5.5`).
 
 To use a **no-key** path, pick **Codex CLI** in the same dialog (enabled when
 `codex` is on your PATH). It runs `codex exec` non-interactively and reuses your
@@ -108,7 +108,7 @@ still runs it after validation and confirmation.
 | `BLACKSMITH_DATA_DIR` | `~/.blacksmith` | Session store location |
 | `BLACKSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `anthropic` (anthropic is a stub) |
 | `OPENAI_API_KEY` | — | OpenAI key (overrides the stored key) |
-| `BLACKSMITH_OPENAI_MODEL` | `gpt-4o` | OpenAI model for planning |
+| `BLACKSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
 | `BLACKSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `BLACKSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |
 
