@@ -1,0 +1,23 @@
+{
+  "name": "@blacksmith/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Solidity sources and precompiled artifacts for Blacksmith local worlds",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "artifacts"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "compile": "forge build && node ./scripts/extract.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
