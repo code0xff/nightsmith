@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Hammer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AiProvider } from "@/components/AiProvider";
 import { Dashboard } from "@/pages/Dashboard";
 import { useWebSocket } from "@/lib/useWebSocket";
+import { api } from "@/lib/api";
 import { useAppStore } from "@/state/useAppStore";
 
 function ConnectionBadge() {
@@ -19,6 +22,22 @@ function ConnectionBadge() {
 
 export function App() {
   useWebSocket();
+  const setAi = useAppStore((s) => s.setAi);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .getAi()
+      .then((ai) => {
+        if (active) setAi(ai);
+      })
+      .catch(() => {
+        // Server may still be starting; the badge stays in its loading state.
+      });
+    return () => {
+      active = false;
+    };
+  }, [setAi]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -31,6 +50,7 @@ export function App() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <AiProvider />
           <ConnectionBadge />
           <ThemeToggle />
         </div>

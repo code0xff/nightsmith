@@ -1,5 +1,6 @@
 import { Plan as PlanSchema, type Plan } from "@blacksmith/shared";
 import { AppError } from "../utils/errors.js";
+import { resolveProvider } from "./credentials.js";
 import { anthropicProvider } from "./providers/anthropic.js";
 import { mockProvider } from "./providers/mock.js";
 import { openaiProvider } from "./providers/openai.js";
@@ -11,13 +12,15 @@ const PROVIDERS: Record<string, AiProvider> = {
   anthropic: anthropicProvider,
 };
 
-/** Select the configured provider (default: deterministic mock). */
+export const PROVIDER_NAMES = Object.keys(PROVIDERS);
+
+/** Select the active provider (stored choice → env → mock). */
 export function selectProvider(): AiProvider {
-  const name = process.env.BLACKSMITH_AI_PROVIDER ?? "mock";
+  const name = resolveProvider();
   const provider = PROVIDERS[name];
   if (!provider) {
     throw new AppError(
-      `Unknown AI provider "${name}". Available: ${Object.keys(PROVIDERS).join(", ")}`,
+      `Unknown AI provider "${name}". Available: ${PROVIDER_NAMES.join(", ")}`,
       400,
     );
   }

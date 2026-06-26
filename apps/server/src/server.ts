@@ -10,6 +10,7 @@ import { registerPromptRoutes } from "./routes/prompt.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
 import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerExportRoutes } from "./routes/export.js";
+import { registerAiRoutes } from "./routes/ai.js";
 import { registerWebSocket } from "./ws/stream.js";
 import { AppError, errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
@@ -55,6 +56,7 @@ export async function buildServer(): Promise<BlacksmithServer> {
   registerExecuteRoutes(app, runtime);
   registerSessionRoutes(app, runtime);
   registerExportRoutes(app);
+  registerAiRoutes(app);
 
   // Serve the built web cockpit (when present) with an SPA fallback.
   const webDist = webDistDir();

@@ -67,6 +67,28 @@ blacksmith replay <sessionId> # headlessly replay a saved session
 Sessions are stored under `~/.blacksmith/sessions/<id>/` (manifest, report,
 logs). Override with `BLACKSMITH_DATA_DIR`.
 
+## AI provider
+
+By default Blacksmith uses the **mock** planner — a deterministic, offline
+parser that needs no key or network. To use **OpenAI (ChatGPT)** instead:
+
+- In the cockpit header, click the **AI** badge → choose *OpenAI* → paste an API
+  key (`sk-…`) → Save. The key is stored locally at
+  `~/.blacksmith/credentials.json` (mode 0600) and is sent only to OpenAI when
+  generating a plan — never logged, never returned by the API.
+- Or set it via environment: `BLACKSMITH_AI_PROVIDER=openai OPENAI_API_KEY=sk-…`
+  (env always wins over the stored key). Model: `BLACKSMITH_OPENAI_MODEL`
+  (default `gpt-4o`).
+
+The provider only ever produces a reviewable plan; the deterministic executor
+still runs it after validation and confirmation.
+
+> **Note on "Sign in with ChatGPT":** OAuth login with a ChatGPT account does
+> not grant access to the OpenAI API — API usage is billed separately and
+> authenticated with an API key. (The Codex CLI's "Sign in with ChatGPT" is a
+> product-specific flow, not a general API-OAuth.) Blacksmith therefore uses an
+> API key, with the local "Connect" flow above to supply it at runtime.
+
 ## Configuration
 
 | Env var | Default | Purpose |
@@ -74,7 +96,9 @@ logs). Override with `BLACKSMITH_DATA_DIR`.
 | `BLACKSMITH_PORT` | `4040` | Server/UI port |
 | `BLACKSMITH_ANVIL_PORT` | `8545` | Anvil RPC port |
 | `BLACKSMITH_DATA_DIR` | `~/.blacksmith` | Session store location |
-| `BLACKSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `anthropic` (latter two are stubs) |
+| `BLACKSMITH_AI_PROVIDER` | `mock` | `mock` \| `openai` \| `anthropic` (anthropic is a stub) |
+| `OPENAI_API_KEY` | — | OpenAI key (overrides the stored key) |
+| `BLACKSMITH_OPENAI_MODEL` | `gpt-4o` | OpenAI model for planning |
 | `BLACKSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `BLACKSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |
 

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   emptyWorldState,
+  type AiStatus,
   type LogEntry,
   type LogLevel,
   type Plan,
@@ -20,8 +21,10 @@ interface AppState {
   busy: boolean;
   autoScroll: boolean;
   levelFilter: Set<LogLevel>;
+  ai: AiStatus | null;
 
   setConnected: (v: boolean) => void;
+  setAi: (ai: AiStatus) => void;
   applyEvent: (event: ServerEvent) => void;
   resetSnapshot: () => void;
   setPlan: (plan: Plan | null, planId?: string | null) => void;
@@ -40,8 +43,10 @@ export const useAppStore = create<AppState>((set) => ({
   busy: false,
   autoScroll: true,
   levelFilter: new Set(ALL_LEVELS),
+  ai: null,
 
   setConnected: (v) => set({ connected: v }),
+  setAi: (ai) => set({ ai }),
 
   applyEvent: (event) =>
     set((s) => {

@@ -46,7 +46,7 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
 | --- | --- |
 | `BLACKSMITH_ALLOW_FORK=true` | Permit `network.forkUrl` (fork a remote chain) |
 | `BLACKSMITH_ALLOW_BROADCAST=true` | Permit `network.broadcast` beyond the local node |
-| `BLACKSMITH_AI_PROVIDER=openai\|anthropic` | Use a real provider instead of the mock (stubs in MVP) |
+| `BLACKSMITH_AI_PROVIDER=openai` | Use the OpenAI provider instead of the mock (needs `OPENAI_API_KEY` or the cockpit Connect flow; anthropic remains a stub) |
 
 These exist for advanced, deliberate use. The defaults are local-only and
 secret-free.

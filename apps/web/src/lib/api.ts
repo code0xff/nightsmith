@@ -1,10 +1,12 @@
 import { z } from "zod";
 import {
+  AiStatus,
   ExecuteResponse,
   LocalnetActionResponse,
   PromptResponse,
   SessionDetail,
   SessionListResponse,
+  type AiConnectRequest,
   type LocalnetAction,
   type Plan,
 } from "@blacksmith/shared";
@@ -69,4 +71,9 @@ export const api = {
   session: (id: string) => request(`/api/sessions/${id}`, SessionDetail),
   deleteSession: (id: string) =>
     request(`/api/sessions/${id}`, OkResponse, { method: "DELETE" }),
+
+  getAi: () => request("/api/ai", AiStatus),
+  aiConnect: (body: AiConnectRequest) =>
+    request("/api/ai/connect", AiStatus, { method: "POST", body: JSON.stringify(body) }),
+  aiDisconnect: () => request("/api/ai/disconnect", AiStatus, { method: "POST" }),
 };
