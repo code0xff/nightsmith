@@ -1,5 +1,21 @@
 import { z } from "zod";
-import { AccountName, AccountRef, DecimalAmount, Identifier } from "./types.js";
+import {
+  AccountName,
+  AccountRef,
+  DecimalAmount,
+  HexString,
+  Identifier,
+} from "./types.js";
+
+/**
+ * A contract argument value (constructor or function call). JSON-friendly:
+ * integers are passed as decimal strings, addresses/bytes as 0x strings, plus
+ * bool and arrays. Tuples/structs are out of scope for now.
+ */
+export type ArgValue = string | number | boolean | ArgValue[];
+export const ArgValue: z.ZodType<ArgValue> = z.lazy(() =>
+  z.union([z.string(), z.number(), z.boolean(), z.array(ArgValue)]),
+);
 
 /**
  * The World manifest is Nightsmith's internal source of truth. It fully and
@@ -49,8 +65,25 @@ export const MockErc20Def = z.object({
 });
 export type MockErc20Def = z.infer<typeof MockErc20Def>;
 
+/**
+ * A user-supplied compiled contract, deployed verbatim (no runtime solc). The
+ * ABI + bytecode are inlined so the manifest stays self-contained and
+ * replayable. ABI is validated loosely; viem parses it.
+ */
+export const ArtifactContractDef = z.object({
+  id: Identifier,
+  kind: z.literal("artifact"),
+  name: z.string().min(1),
+  abi: z.array(z.record(z.string(), z.unknown())).min(1),
+  bytecode: HexString,
+});
+export type ArtifactContractDef = z.infer<typeof ArtifactContractDef>;
+
 /** Contract definitions. Extensible via discriminated union on `kind`. */
-export const ContractDef = z.discriminatedUnion("kind", [MockErc20Def]);
+export const ContractDef = z.discriminatedUnion("kind", [
+  MockErc20Def,
+  ArtifactContractDef,
+]);
 export type ContractDef = z.infer<typeof ContractDef>;
 
 // ── Actions ──────────────────────────────────────────────────────────────
@@ -61,6 +94,8 @@ export const DeployContractAction = z.object({
   contractId: Identifier,
   /** Account name that deploys (and owns) the contract. */
   deployer: AccountName,
+  /** Constructor arguments (encoded against the contract's ABI). */
+  args: z.array(ArgValue).default([]),
 });
 
 export const MintAction = z.object({
@@ -81,10 +116,25 @@ export const TransferAction = z.object({
   amount: DecimalAmount,
 });
 
+/** Call any function on a deployed contract (init/setup, state changes). */
+export const CallAction = z.object({
+  type: z.literal("call"),
+  contractId: Identifier,
+  /** Function name in the contract's ABI. */
+  function: z.string().min(1),
+  args: z.array(ArgValue).default([]),
+  /** Signer — must be a named Anvil account. */
+  from: AccountName,
+  /** Optional ETH value to send with the call (ether, decimal string). */
+  value: DecimalAmount.optional(),
+});
+export type CallAction = z.infer<typeof CallAction>;
+
 export const Action = z.discriminatedUnion("type", [
   DeployContractAction,
   MintAction,
   TransferAction,
+  CallAction,
 ]);
 export type Action = z.infer<typeof Action>;
 export type ActionType = Action["type"];
@@ -102,7 +152,21 @@ export const TokenBalanceAssertion = z.object({
   description: z.string().optional(),
 });
 
-export const Assertion = z.discriminatedUnion("type", [TokenBalanceAssertion]);
+/** Assert the (normalized) return value of a view/pure function call. */
+export const CallResultAssertion = z.object({
+  type: z.literal("callResult"),
+  contractId: Identifier,
+  function: z.string().min(1),
+  args: z.array(ArgValue).default([]),
+  /** Expected result, compared as a normalized string (bigint→decimal, address→lowercase). */
+  expected: z.string(),
+  description: z.string().optional(),
+});
+
+export const Assertion = z.discriminatedUnion("type", [
+  TokenBalanceAssertion,
+  CallResultAssertion,
+]);
 export type Assertion = z.infer<typeof Assertion>;
 
 // ── World ───────────────────────────────────────────────────────────────────
