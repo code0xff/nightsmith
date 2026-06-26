@@ -23,21 +23,22 @@ function ConnectionBadge() {
 export function App() {
   useWebSocket();
   const setAi = useAppStore((s) => s.setAi);
+  const setAnvil = useAppStore((s) => s.setAnvil);
 
   useEffect(() => {
     let active = true;
     api
       .getAi()
-      .then((ai) => {
-        if (active) setAi(ai);
-      })
-      .catch(() => {
-        // Server may still be starting; the badge stays in its loading state.
-      });
+      .then((ai) => active && setAi(ai))
+      .catch(() => {});
+    api
+      .getAnvil()
+      .then((anvil) => active && setAnvil(anvil))
+      .catch(() => {});
     return () => {
       active = false;
     };
-  }, [setAi]);
+  }, [setAi, setAnvil]);
 
   return (
     <div className="flex h-screen flex-col bg-background">

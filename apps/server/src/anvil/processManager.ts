@@ -2,6 +2,7 @@ import { execa, type ResultPromise } from "execa";
 import { createPublicClient, http } from "viem";
 import { ANVIL_HOST, ANVIL_READY_TIMEOUT_MS } from "../config.js";
 import { AppError, errorMessage } from "../utils/errors.js";
+import { locateAnvil } from "./locate.js";
 
 export interface AnvilOptions {
   port: number;
@@ -54,7 +55,7 @@ export class AnvilProcess {
       args.push("--fork-url", this.options.forkUrl);
     }
 
-    this.proc = execa("anvil", args, {
+    this.proc = execa(locateAnvil(), args, {
       stdout: "pipe",
       stderr: "pipe",
       reject: false,

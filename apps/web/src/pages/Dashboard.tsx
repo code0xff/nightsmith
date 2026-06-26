@@ -1,3 +1,4 @@
+import { AnvilInstall } from "@/components/AnvilInstall";
 import { LocalnetStatus } from "@/components/LocalnetStatus";
 import { SessionsPanel } from "@/components/SessionsPanel";
 import { PromptBox } from "@/components/PromptBox";
@@ -11,6 +12,7 @@ export function Dashboard() {
   return (
     <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-12">
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto scrollbar-thin lg:col-span-3">
+        <AnvilInstall />
         <LocalnetStatus />
         <SessionsPanel />
       </div>

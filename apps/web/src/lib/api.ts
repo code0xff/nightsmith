@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   AiStatus,
+  AnvilStatus,
   ExecuteResponse,
   LocalnetActionResponse,
   PromptResponse,
@@ -71,6 +72,9 @@ export const api = {
   session: (id: string) => request(`/api/sessions/${id}`, SessionDetail),
   deleteSession: (id: string) =>
     request(`/api/sessions/${id}`, OkResponse, { method: "DELETE" }),
+
+  getAnvil: () => request("/api/anvil", AnvilStatus),
+  installAnvil: () => request("/api/anvil/install", AnvilStatus, { method: "POST" }),
 
   getAi: () => request("/api/ai", AiStatus),
   aiConnect: (body: AiConnectRequest) =>

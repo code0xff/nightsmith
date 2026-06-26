@@ -129,6 +129,16 @@ export const AiConnectRequest = z.object({
 });
 export type AiConnectRequest = z.infer<typeof AiConnectRequest>;
 
+// Anvil toolchain status / install
+export const AnvilStatus = z.object({
+  installed: z.boolean(),
+  /** Whether automatic install is supported on this platform (macOS/Linux). */
+  installable: z.boolean(),
+  /** The exact command an install will run (shown to the user for consent). */
+  installCommand: z.string(),
+});
+export type AnvilStatus = z.infer<typeof AnvilStatus>;
+
 // Generic error envelope
 export const ApiError = z.object({
   error: z.string(),

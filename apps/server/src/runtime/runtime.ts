@@ -15,6 +15,7 @@ import {
   type WorldState,
 } from "@blacksmith/shared";
 import { AnvilProcess } from "../anvil/processManager.js";
+import { assertAnvilInstalled } from "../anvil/preflight.js";
 import { getChainStatus } from "../anvil/status.js";
 import { revertSnapshot, takeSnapshot } from "../anvil/snapshot.js";
 import { ANVIL_MNEMONIC } from "../config.js";
@@ -223,6 +224,8 @@ export class Runtime {
 
   async startLocalnet(network: NetworkConfig, sessionName?: string): Promise<void> {
     if (this.isRunning()) throw new AppError("Localnet is already running", 409);
+    // Fail fast with an install hint rather than spawning a missing binary.
+    await assertAnvilInstalled();
     this.resetWorldState();
     this.mnemonic = network.mnemonic ?? ANVIL_MNEMONIC;
     this.patchLocalnet({ status: "starting", forked: Boolean(network.forkUrl) });

@@ -49,7 +49,8 @@ pnpm demo
 ## Requirements
 
 - Node.js ≥ 20, pnpm ≥ 11
-- [Foundry](https://book.getfoundry.sh/) (`anvil`, `forge`, `cast`) on `PATH`
+- [Foundry](https://book.getfoundry.sh/) (`anvil`, `forge`, `cast`) on `PATH` —
+  or let the cockpit install it for you on first run (consented, macOS/Linux)
 
 ## Safety
 

@@ -10,6 +10,13 @@ pnpm --filter @blacksmith/server exec blacksmith doctor   # check anvil/forge/ca
 
 Requirements: Node ≥ 20, pnpm ≥ 11, and Foundry (`anvil`, `forge`, `cast`) on `PATH`.
 
+If Anvil is missing, the cockpit shows an **"Anvil not found"** card with a
+one-click, consented Foundry install (macOS/Linux) — it runs the official
+`curl -L https://foundry.paradigm.xyz | bash && foundryup` and streams output to
+the log console. On other platforms it links to the manual install. The server
+also fails fast with that hint (instead of hanging) if you try to start a
+localnet without Anvil.
+
 ## Run the cockpit
 
 ```bash
