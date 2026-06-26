@@ -1,0 +1,23 @@
+{
+  "name": "blacksmith",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-native local blockchain cockpit for Foundry Anvil",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter @blacksmith/server dev",
+    "dev:web": "pnpm --filter @blacksmith/web dev",
+    "demo": "pnpm --filter @blacksmith/server demo",
+    "clean": "pnpm -r exec rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

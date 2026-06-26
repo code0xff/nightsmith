@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Blacksmith runtime data (sessions, manifests, logs)
+.blacksmith/
+~/.blacksmith/
+
+# Foundry (the slim, committed artifact lives in packages/contracts/artifacts/)
+packages/contracts/cache/
+packages/contracts/out/
+
+# Logs
+*.log
+.nightcrow/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.local
+
+# Env
+.env
+.env.*
+!.env.example
