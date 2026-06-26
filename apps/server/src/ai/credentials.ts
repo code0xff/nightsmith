@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { dataDir, ensureDir } from "../utils/paths.js";
 
@@ -9,7 +9,7 @@ import { dataDir, ensureDir } from "../utils/paths.js";
  * credential the user owns — it is never sent anywhere except OpenAI, never
  * logged, and never returned to the client.
  */
-export type ProviderName = "mock" | "openai" | "codex" | "anthropic";
+export type ProviderName = "mock" | "openai" | "codex";
 
 interface StoredConfig {
   provider?: ProviderName;
@@ -31,10 +31,21 @@ function read(): StoredConfig {
 }
 
 function write(config: StoredConfig): void {
-  ensureDir(dataDir());
-  writeFileSync(credentialsPath(), JSON.stringify(config, null, 2) + "\n", {
-    mode: 0o600,
-  });
+  const dir = ensureDir(dataDir());
+  // Keep the data dir and credentials file private even if they already exist
+  // (mode on writeFileSync only applies when creating a new file).
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    // Best effort (e.g. on filesystems without POSIX perms).
+  }
+  const path = credentialsPath();
+  writeFileSync(path, JSON.stringify(config, null, 2) + "\n", { mode: 0o600 });
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Best effort.
+  }
 }
 
 /** The active provider: stored choice → env override → mock. */

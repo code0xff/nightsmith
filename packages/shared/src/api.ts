@@ -108,7 +108,7 @@ export const SessionListResponse = z.object({
 export type SessionListResponse = z.infer<typeof SessionListResponse>;
 
 // AI provider configuration
-export const ProviderName = z.enum(["mock", "openai", "codex", "anthropic"]);
+export const ProviderName = z.enum(["mock", "openai", "codex"]);
 export type ProviderName = z.infer<typeof ProviderName>;
 
 export const AiStatus = z.object({

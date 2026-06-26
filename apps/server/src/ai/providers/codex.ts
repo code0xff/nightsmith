@@ -8,22 +8,28 @@ import { PLANNER_JSON_CONTRACT, PLANNER_SYSTEM_PROMPT } from "../prompts/planner
 import type { AiProvider, PlanInput } from "./types.js";
 
 const CODEX_TIMEOUT_MS = 120_000;
-let availableCache: boolean | null = null;
+const AVAILABILITY_TTL_MS = 30_000;
+let availableCache: { value: boolean; checkedAt: number } | null = null;
 
 /**
- * Whether the Codex CLI is installed. Cached after the first check; this only
- * tells us the binary exists, not that the user is logged in (a login/runtime
- * failure surfaces when we actually invoke it, and the planner falls back).
+ * Whether the Codex CLI is installed. Cached with a short TTL so installing
+ * Codex after the server starts is picked up without a restart. This only tells
+ * us the binary exists, not that the user is logged in (a login/runtime failure
+ * surfaces when we actually invoke it, and the planner falls back).
  */
 export async function isCodexAvailable(): Promise<boolean> {
-  if (availableCache !== null) return availableCache;
+  if (availableCache && Date.now() - availableCache.checkedAt < AVAILABILITY_TTL_MS) {
+    return availableCache.value;
+  }
+  let value = false;
   try {
     await execa("codex", ["--version"], { timeout: 5000 });
-    availableCache = true;
+    value = true;
   } catch {
-    availableCache = false;
+    value = false;
   }
-  return availableCache;
+  availableCache = { value, checkedAt: Date.now() };
+  return value;
 }
 
 function buildPrompt(input: PlanInput): string {

@@ -6,6 +6,7 @@ import type { AiProvider, PlanInput } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = process.env.BLACKSMITH_OPENAI_MODEL ?? "gpt-4o";
+const REQUEST_TIMEOUT_MS = 60_000;
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -24,19 +25,35 @@ function buildUserContent(input: PlanInput): string {
 }
 
 async function callOpenAI(apiKey: string, messages: ChatMessage[]): Promise<string> {
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages,
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    // Abort or network error — typed so the planner can fall back.
+    throw new AppError(
+      controller.signal.aborted
+        ? `OpenAI request timed out after ${REQUEST_TIMEOUT_MS}ms`
+        : `OpenAI request failed: ${errorMessage(err)}`,
+      504,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
