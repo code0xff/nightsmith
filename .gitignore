@@ -18,6 +18,9 @@ packages/contracts/out/
 *.log
 .nightcrow/
 
+# OMC
+.omc/
+
 # Editor / OS
 .DS_Store
 .idea/
