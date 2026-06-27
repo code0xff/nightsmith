@@ -1,6 +1,6 @@
 import { execa, type ResultPromise } from "execa";
 import { createPublicClient, http } from "viem";
-import { ANVIL_HOST, ANVIL_READY_TIMEOUT_MS } from "../config.js";
+import { ANVIL_CONNECT_HOST, ANVIL_HOST, ANVIL_READY_TIMEOUT_MS } from "../config.js";
 import { AppError, errorMessage } from "../utils/errors.js";
 import { locateAnvil } from "./locate.js";
 
@@ -26,7 +26,7 @@ export class AnvilProcess {
   }
 
   get rpcUrl(): string {
-    return `http://${ANVIL_HOST}:${this.options.port}`;
+    return `http://${ANVIL_CONNECT_HOST}:${this.options.port}`;
   }
 
   get pid(): number | undefined {

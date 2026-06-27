@@ -4,6 +4,11 @@ import { fileURLToPath, URL } from "node:url";
 
 const SERVER = process.env.NIGHTSMITH_SERVER ?? "http://127.0.0.1:4040";
 
+// Bind host for the dev server. Defaults to loopback; set
+// `NIGHTSMITH_WEB_HOST=0.0.0.0` (or `true`) to expose the dev UI on the LAN.
+const WEB_HOST = process.env.NIGHTSMITH_WEB_HOST;
+const WEB_PORT = Number(process.env.NIGHTSMITH_WEB_PORT ?? 4042);
+
 // Benign proxy churn: when the backend restarts, or when the client closes a
 // WebSocket mid-flush (common under React StrictMode's double-mount), the proxy
 // socket can EPIPE/ECONNRESET. These are harmless — the client auto-reconnects.
@@ -32,7 +37,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 4042,
+    port: WEB_PORT,
+    ...(WEB_HOST ? { host: WEB_HOST === "true" ? true : WEB_HOST } : {}),
     proxy: {
       "/api": { target: SERVER, changeOrigin: true, configure: quietProxyErrors },
       "/ws": { target: SERVER, ws: true, changeOrigin: true, configure: quietProxyErrors },
