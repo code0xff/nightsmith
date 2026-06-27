@@ -29,7 +29,7 @@ export function PromptBox() {
   };
 
   return (
-    <Card>
+    <Card className="shrink-0">
       <CardHeader>
         <CardTitle>
           <Sparkles className="size-3.5 text-muted-foreground" />

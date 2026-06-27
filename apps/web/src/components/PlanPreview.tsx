@@ -43,7 +43,7 @@ export function PlanPreview() {
     accent === "destructive" ? "destructive" : accent === "warning" ? "warning" : "default";
 
   return (
-    <Card>
+    <Card className="shrink-0">
       <CardHeader>
         <CardTitle>
           <Badge variant={badgeVariant}>{plan.intent}</Badge>

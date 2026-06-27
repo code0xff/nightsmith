@@ -59,14 +59,14 @@ export function WorldState() {
   const { accounts, contracts, tokenBalances } = useAppStore((s) => s.world);
 
   return (
-    <Card className="flex min-h-0 flex-col">
+    <Card className="flex shrink-0 flex-col">
       <CardHeader>
         <CardTitle>
           <Boxes className="size-3.5 text-muted-foreground" />
           World state
         </CardTitle>
       </CardHeader>
-      <CardContent className="min-h-0 space-y-3 overflow-y-auto scrollbar-thin">
+      <CardContent className="space-y-3">
         <section className="space-y-1">
           <SubHeading icon={<Users className="size-3" />}>Accounts</SubHeading>
           {accounts.length === 0 ? (
