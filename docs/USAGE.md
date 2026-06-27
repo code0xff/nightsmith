@@ -109,8 +109,11 @@ plan; the deterministic executor still runs it after validation and confirmation
 | Env var | Default | Purpose |
 | --- | --- | --- |
 | `NIGHTSMITH_PORT` | `4040` | Server/UI port |
-| `NIGHTSMITH_HOST` | `127.0.0.1` | Server bind address |
+| `NIGHTSMITH_HOST` | `127.0.0.1` | Server bind address (set `0.0.0.0` for LAN — also set `NIGHTSMITH_ALLOWED_HOSTS`) |
 | `NIGHTSMITH_ANVIL_PORT` | `8545` | Anvil RPC port |
+| `NIGHTSMITH_ANVIL_HOST` | `127.0.0.1` | Anvil bind address (set `0.0.0.0` for LAN; the server still connects over loopback) |
+| `NIGHTSMITH_WEB_PORT` | `4042` | Vite dev-server port (`pnpm dev:web`) |
+| `NIGHTSMITH_WEB_HOST` | `127.0.0.1` | Vite dev-server bind address (set `0.0.0.0` or `true` for LAN) |
 | `NIGHTSMITH_DATA_DIR` | `~/.nightsmith` | Session store location |
 | `OPENAI_API_KEY` | — | OpenAI key (enables the OpenAI provider; overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
@@ -118,6 +121,29 @@ plan; the deterministic executor still runs it after validation and confirmation
 | `NIGHTSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |
 | `NIGHTSMITH_ALLOWED_HOSTS` | — | Extra allowed `Host` values (comma-separated) beyond localhost |
 | `NIGHTSMITH_ENV_FILE` | `./.env` | Path to the auto-loaded env file |
+
+### Exposing services on the LAN
+
+All three services bind to loopback by default. To reach them from another
+machine, bind each to `0.0.0.0`:
+
+```bash
+# server (:4040) + Anvil (:8545)
+NIGHTSMITH_HOST=0.0.0.0 \
+NIGHTSMITH_ANVIL_HOST=0.0.0.0 \
+NIGHTSMITH_ALLOWED_HOSTS=<your-lan-ip> \
+  nightsmith serve
+
+# Vite dev UI (:4042)
+NIGHTSMITH_WEB_HOST=0.0.0.0 pnpm dev:web
+```
+
+`NIGHTSMITH_ALLOWED_HOSTS` is required when the server is reached by IP/hostname —
+the Host-header guard rejects anything not in the allow-list (defends a bound
+server against DNS-rebinding).
+
+> ⚠️ `NIGHTSMITH_ANVIL_HOST=0.0.0.0` exposes a chain whose well-known test
+> accounts are unlocked with no auth. Only do this on a trusted network.
 
 See [SAFETY.md](SAFETY.md) for the safety model and [MANIFEST.md](MANIFEST.md)
 for the manifest format.
