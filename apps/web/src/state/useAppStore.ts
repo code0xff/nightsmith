@@ -19,6 +19,8 @@ interface AppState {
   logs: LogEntry[];
   plan: Plan | null;
   planId: string | null;
+  /** The most recently executed session — the live world a follow-up extends. */
+  sessionId: string | null;
   busy: boolean;
   autoScroll: boolean;
   levelFilter: Set<LogLevel>;
@@ -31,6 +33,7 @@ interface AppState {
   applyEvent: (event: ServerEvent) => void;
   resetSnapshot: () => void;
   setPlan: (plan: Plan | null, planId?: string | null) => void;
+  setSessionId: (id: string | null) => void;
   setBusy: (v: boolean) => void;
   setAutoScroll: (v: boolean) => void;
   toggleLevel: (level: LogLevel) => void;
@@ -43,6 +46,7 @@ export const useAppStore = create<AppState>((set) => ({
   logs: [],
   plan: null,
   planId: null,
+  sessionId: null,
   busy: false,
   autoScroll: true,
   levelFilter: new Set(ALL_LEVELS),
@@ -74,6 +78,7 @@ export const useAppStore = create<AppState>((set) => ({
   resetSnapshot: () => set({ logs: [] }),
 
   setPlan: (plan, planId = null) => set({ plan, planId }),
+  setSessionId: (sessionId) => set({ sessionId }),
   setBusy: (v) => set({ busy: v }),
   setAutoScroll: (v) => set({ autoScroll: v }),
   toggleLevel: (level) =>

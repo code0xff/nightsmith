@@ -5,6 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { cancelPlan, runCurrentPlan } from "@/lib/actions";
 import { useAppStore } from "@/state/useAppStore";
 
+const INTENT_LABELS: Record<string, string> = {
+  createWorld: "create",
+  modifyWorld: "modify",
+  extendWorld: "extend · live",
+  runScenario: "replay",
+  control: "control",
+  explain: "explain",
+};
+
 function Section({
   icon,
   title,
@@ -46,7 +55,7 @@ export function PlanPreview() {
     <Card className="shrink-0">
       <CardHeader>
         <CardTitle>
-          <Badge variant={badgeVariant}>{plan.intent}</Badge>
+          <Badge variant={badgeVariant}>{INTENT_LABELS[plan.intent] ?? plan.intent}</Badge>
           {plan.uiPreview.title}
         </CardTitle>
         <span className="text-xs text-muted-foreground">Review before running</span>

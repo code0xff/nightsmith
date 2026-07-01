@@ -16,7 +16,9 @@ export async function submitPrompt(prompt: string): Promise<void> {
   if (!prompt.trim() || store.busy) return;
   store.setBusy(true);
   try {
-    const { plan, planId } = await api.prompt(prompt);
+    // Pass the live session so the planner sees the previous manifest and can
+    // plan a modify/extend rather than a fresh world.
+    const { plan, planId } = await api.prompt(prompt, store.sessionId ?? undefined);
     store.setPlan(plan, planId);
     toast.success("Plan ready for review", { description: plan.summary });
   } catch (err) {
@@ -34,7 +36,9 @@ export async function runCurrentPlan(): Promise<void> {
   store.setBusy(true);
   toast("Execution started", { description: plan.summary });
   try {
-    const res = await api.execute(plan, planId ?? undefined);
+    const res = await api.execute(plan, planId ?? undefined, store.sessionId ?? undefined);
+    // Track the live session so the next prompt/extend targets this world.
+    if (res.sessionId) store.setSessionId(res.sessionId);
     const report = res.report;
     if (report) {
       const passed = report.assertions.filter((a) => a.passed).length;

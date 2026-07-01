@@ -61,10 +61,10 @@ export const api = {
       body: JSON.stringify({ prompt, sessionId }),
     }),
 
-  execute: (plan: Plan, planId?: string) =>
+  execute: (plan: Plan, planId?: string, baseSessionId?: string) =>
     request("/api/execute", ExecuteResponse, {
       method: "POST",
-      body: JSON.stringify({ plan, planId }),
+      body: JSON.stringify({ plan, planId, baseSessionId }),
     }),
 
   localnet: (action: LocalnetAction, snapshotId?: string) =>
