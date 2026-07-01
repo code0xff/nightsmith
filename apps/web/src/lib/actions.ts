@@ -3,6 +3,9 @@ import type { LocalnetAction } from "@nightsmith/shared";
 import { ApiRequestError, api } from "./api";
 import { useAppStore } from "@/state/useAppStore";
 
+/** Control/localnet actions that invalidate the live-session cursor. */
+const INVALIDATING_CONTROLS = new Set(["stop", "reset", "revert"]);
+
 function describeError(err: unknown): string {
   if (err instanceof ApiRequestError) {
     return err.details?.length ? `${err.message}: ${err.details.join("; ")}` : err.message;
@@ -37,8 +40,14 @@ export async function runCurrentPlan(): Promise<void> {
   toast("Execution started", { description: plan.summary });
   try {
     const res = await api.execute(plan, planId ?? undefined, store.sessionId ?? undefined);
-    // Track the live session so the next prompt/extend targets this world.
+    // Track the live session so the next prompt/extend targets this world. A
+    // control action that tears down or rewinds the world (stop/reset/revert)
+    // returns no session and invalidates the live cursor — clear it so the next
+    // extend doesn't target a dead world.
     if (res.sessionId) store.setSessionId(res.sessionId);
+    else if (plan.intent === "control" && INVALIDATING_CONTROLS.has(plan.control?.kind ?? "")) {
+      store.setSessionId(null);
+    }
     const report = res.report;
     if (report) {
       const passed = report.assertions.filter((a) => a.passed).length;
@@ -82,6 +91,8 @@ export async function localnetAction(
 ): Promise<void> {
   try {
     const res = await api.localnet(action, snapshotId);
+    // stop/reset/revert leave no live world matching the tracked session.
+    if (INVALIDATING_CONTROLS.has(action)) useAppStore.getState().setSessionId(null);
     toast.success(ACTION_LABELS[action], {
       description: action === "snapshot" ? res.snapshotId : undefined,
     });
@@ -111,6 +122,9 @@ export async function replaySession(id: string): Promise<void> {
       explanation: null,
       uiPreview: { title: "Replay", description: detail.manifest.name, accent: "default" },
     });
+    // The replayed manifest is now the live world — track it so a follow-up
+    // extends this session, not a stale one.
+    if (res.sessionId) store.setSessionId(res.sessionId);
     if (res.report?.status === "completed") toast.success("Replay completed");
     else toast.error("Replay finished with failures");
   } catch (err) {
