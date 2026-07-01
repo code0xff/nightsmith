@@ -135,12 +135,34 @@ export function parseControl(prompt: string): ControlAction | null {
 const REPLAY_RE = /\breplay\b|다시\s*실행|run\b.*\bagain\b|again\b/i;
 const EXPLAIN_RE = /\bexplain\b|\bwhy\b|왜|이유|설명/i;
 const MODIFY_RE = /\bchange\b|\bset\b|\bmodify\b|\bupdate\b|\binstead\b|바꾸|수정|변경/i;
+// Additive follow-up cues. Deliberately excludes "이어서"/"계속"/"resume", which
+// are control (resume) keywords, to avoid hijacking that intent.
+const EXTEND_RE = /\b(also|then|next|additionally|append|as well|and then)\b|그다음|그 다음|추가로|또한/i;
+// Requests that clearly want a brand-new world, even while one is running.
+const CREATE_RE = /\b(create|build|new world|fresh|from scratch|start over)\b|새(로운)?\s*월드|처음부터/i;
 
-/** Classify the prompt into a plan intent. */
-export function detectIntent(prompt: string, hasPrevious: boolean): PlanIntent {
+/**
+ * Classify the prompt into a plan intent. `running` (localnet up) distinguishes
+ * an additive follow-up (extendWorld — append onto the live world) from a
+ * from-scratch build.
+ */
+export function detectIntent(
+  prompt: string,
+  hasPrevious: boolean,
+  running = false,
+): PlanIntent {
   if (EXPLAIN_RE.test(prompt)) return "explain";
   const hasChange = MODIFY_RE.test(prompt) || parseBalanceChange(prompt) != null;
   if (hasPrevious && hasChange) return "modifyWorld";
+  // Append onto the already-running world when the prompt adds a new action and
+  // isn't a modify or an explicit "create a new world" request.
+  if (hasPrevious && running && !hasChange && !CREATE_RE.test(prompt)) {
+    const additive =
+      EXTEND_RE.test(prompt) ||
+      parseTransfer(prompt) != null ||
+      parseBalances(prompt).length > 0;
+    if (additive) return "extendWorld";
+  }
   if (REPLAY_RE.test(prompt)) return "runScenario";
   if (parseControl(prompt) && !hasChange) return "control";
   return "createWorld";

@@ -130,6 +130,33 @@ export function buildManifest(params: WorldParams): WorldManifest {
   };
 }
 
+/**
+ * Fold a single-token manifest's mint/transfer actions into final balances
+ * (base units), keyed by ref (name or 0x address). Used to regenerate balance
+ * assertions after appending actions (extendWorld). Returns null for manifests
+ * whose first contract isn't a MockERC20 (nothing to simulate deterministically).
+ */
+export function simulateBalances(
+  manifest: WorldManifest,
+): { contractId: string; symbol: string; decimals: number; balances: Map<string, bigint> } | null {
+  const contract = manifest.contracts[0];
+  if (!contract || contract.kind !== "MockERC20") return null;
+  const { decimals } = contract;
+  const balances = new Map<string, bigint>();
+  const add = (ref: string, delta: bigint) =>
+    balances.set(ref, (balances.get(ref) ?? 0n) + delta);
+  for (const action of manifest.actions) {
+    if (action.contractId !== contract.id) continue;
+    if (action.type === "mint") add(action.to, parseUnits(action.amount, decimals));
+    else if (action.type === "transfer") {
+      const amt = parseUnits(action.amount, decimals);
+      add(action.from, -amt);
+      add(action.to, amt);
+    }
+  }
+  return { contractId: contract.id, symbol: contract.symbol, decimals, balances };
+}
+
 /** Recover world parameters from an existing manifest (for modify/replay). */
 export function deriveParams(manifest: WorldManifest): WorldParams {
   const contract = manifest.contracts[0];

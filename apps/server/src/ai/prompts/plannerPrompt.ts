@@ -19,6 +19,7 @@ Rules:
 - Always include assertions when the request implies a test.
 - Always make the plan replayable.
 - If the user asks to stop, pause, resume, reset, replay, or inspect the localnet, produce a control action plan.
+- If a world is already running and the user asks to ADD to it (a follow-up action like a new transfer, mint, or call) rather than change earlier setup, use intent "extendWorld": return the FULL cumulative manifest = the previous manifest with the new actions appended at the END. Preserve the previous network, accounts, contracts, and every prior action VERBATIM and in order — never reorder, edit, or remove them, and do not redeploy existing contracts. Only add new accounts/contracts if the new actions need them. Use "modifyWorld" instead when the user changes earlier setup (e.g. a different initial balance), since that requires a full rebuild.
 - If the user asks why something failed, produce an inspection/explanation plan instead of a mutation plan.
 - Output valid JSON only, matching the Plan schema (intent, summary, assumptions, steps, expectedStateChanges, assertions, safetyNotes, manifest|null, control|null, explanation|null, uiPreview).`;
 
@@ -30,7 +31,7 @@ Rules:
 export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
 
 {
-  "intent": "createWorld" | "modifyWorld" | "runScenario" | "control" | "explain",
+  "intent": "createWorld" | "modifyWorld" | "extendWorld" | "runScenario" | "control" | "explain",
   "summary": string,
   "assumptions": string[],
   "steps": string[],
@@ -56,7 +57,7 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
   "uiPreview": { "title": string, "description": string, "accent": "default"|"warning"|"destructive" }
 }
 
-Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest. For createWorld/modifyWorld/runScenario set "manifest" and leave control/explanation null. For control set "control" only. For explain set "explanation" only.
+Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest. For createWorld/modifyWorld/extendWorld/runScenario set "manifest" and leave control/explanation null. For extendWorld the manifest must be the previous one with new actions appended at the end (prior actions unchanged). For control set "control" only. For explain set "explanation" only.
 
 Recipients: a mint "to", a transfer "to", and an assertion "account" may be EITHER a named account declared in accounts[] OR a literal 20-byte 0x address. If the user gives a concrete 0x address, use it VERBATIM — never replace it with a named account, and do not add it to accounts[]. A transfer "from" and a deployContract "deployer" MUST be named accounts (Nightsmith can only sign for those).
 

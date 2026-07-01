@@ -1,4 +1,5 @@
-import type { Action, Plan, WorldManifest } from "@nightsmith/shared";
+import { formatUnits } from "viem";
+import { isAddress, type Action, type Assertion, type Plan, type WorldManifest } from "@nightsmith/shared";
 import { diffManifests } from "../../manifest/diff.js";
 import {
   detectIntent,
@@ -8,7 +9,12 @@ import {
   parseToken,
   parseTransfer,
 } from "../parse.js";
-import { buildManifest, deriveParams, type WorldParams } from "../worldBuilder.js";
+import {
+  buildManifest,
+  deriveParams,
+  simulateBalances,
+  type WorldParams,
+} from "../worldBuilder.js";
 import type { AiProvider, PlanInput } from "./types.js";
 
 const SAFETY_NOTES = (symbol: string): string[] => [
@@ -170,6 +176,96 @@ function modifyWorldPlan(prompt: string, previous: WorldManifest): Plan {
   });
 }
 
+/**
+ * Append new actions onto the live world WITHOUT rebuilding. Preserves the
+ * previous manifest's accounts/contracts/actions verbatim (so it passes the
+ * extend guard) and only adds mint/transfer actions parsed from the prompt.
+ */
+function extendWorldPlan(prompt: string, previous: WorldManifest): Plan {
+  const contract = previous.contracts[0];
+  const contractId = contract?.id ?? symbolOf(previous).toLowerCase();
+  const next: WorldManifest = structuredClone(previous);
+  const assumptions: string[] = [];
+
+  // Add a named account (next free Anvil index) if the prompt references a new one.
+  const ensureAccount = (ref: string) => {
+    if (isAddress(ref) || next.accounts.some((a) => a.name === ref)) return;
+    const used = new Set(next.accounts.map((a) => a.addressIndex));
+    let idx = 1;
+    while (used.has(idx) && idx <= 9) idx++;
+    next.accounts.push({ name: ref, addressIndex: idx, fundEth: "0" });
+  };
+
+  const newActions: Action[] = [];
+  const transfer = parseTransfer(prompt);
+  if (transfer) {
+    ensureAccount(transfer.from);
+    ensureAccount(transfer.to);
+    newActions.push({
+      type: "transfer",
+      contractId,
+      from: transfer.from,
+      to: transfer.to,
+      amount: transfer.amount,
+    });
+    assumptions.push(
+      `Appended transfer: ${transfer.amount} from ${transfer.from} to ${transfer.to}.`,
+    );
+  }
+  for (const m of parseBalances(prompt)) {
+    ensureAccount(m.ref);
+    newActions.push({ type: "mint", contractId, to: m.ref, amount: m.amount });
+    assumptions.push(`Appended mint: ${m.amount} to ${m.ref}.`);
+  }
+  if (newActions.length === 0) {
+    assumptions.push("No new action detected — re-checking assertions against the live world.");
+  }
+
+  next.actions = [...previous.actions, ...newActions];
+
+  // Recompute balance assertions over the full cumulative action list so the
+  // preview reflects the extended world's expected end state.
+  const sim = simulateBalances(next);
+  if (sim) {
+    const assertions: Assertion[] = [];
+    for (const [ref, raw] of sim.balances) {
+      if (raw < 0n) continue;
+      const human = formatUnits(raw, sim.decimals);
+      assertions.push({
+        type: "tokenBalance",
+        contractId: sim.contractId,
+        account: ref,
+        expected: human,
+        description: `${ref} holds ${human} ${sim.symbol}`,
+      });
+    }
+    next.assertions = assertions;
+  }
+
+  const symbol = symbolOf(next);
+  const summary = `Extend the running "${previous.name}" by ${newActions.length} action(s) — applied on top of the live world without restarting Anvil.`;
+  return {
+    intent: "extendWorld",
+    summary,
+    assumptions,
+    steps: newActions.length ? newActions.map(describeAction) : ["Re-evaluate assertions (no new actions)"],
+    expectedStateChanges: expectedChanges(next),
+    assertions: assertionDescriptions(next),
+    safetyNotes: [
+      "Applied to the already-running world — Anvil is not restarted and deployed contracts keep their addresses.",
+      ...SAFETY_NOTES(symbol),
+    ],
+    manifest: next,
+    control: null,
+    explanation: null,
+    uiPreview: {
+      title: `Extend ${previous.name} (+${newActions.length})`,
+      description: summary,
+      accent: "default",
+    },
+  };
+}
+
 function runScenarioPlan(previous: WorldManifest | null): Plan {
   if (!previous) {
     // Nothing to replay — fall back to building the demo world.
@@ -237,16 +333,14 @@ function explainPlan(prompt: string): Plan {
 export const mockProvider: AiProvider = {
   name: "mock",
   async generate(input: PlanInput): Promise<Plan> {
-    const intent = detectIntent(input.prompt, input.previousManifest != null);
+    const intent = detectIntent(input.prompt, input.previousManifest != null, input.running);
     switch (intent) {
       case "createWorld":
         return createWorldPlan(input.prompt);
       case "modifyWorld":
         return modifyWorldPlan(input.prompt, input.previousManifest!);
       case "extendWorld":
-        // Real append-only planning lands in a later commit; until then extend
-        // behaves like modify (a full deterministic rebuild), which is safe.
-        return modifyWorldPlan(input.prompt, input.previousManifest!);
+        return extendWorldPlan(input.prompt, input.previousManifest!);
       case "runScenario":
         return runScenarioPlan(input.previousManifest);
       case "control":
