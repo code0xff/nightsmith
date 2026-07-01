@@ -74,6 +74,15 @@ export class Runtime {
   private lastSnapshotId: string | null = null;
   private lastManifestJson: string | null = null;
 
+  /**
+   * The session whose actions have been applied to the *currently running*
+   * Anvil, and how many of its manifest actions are already live. These let an
+   * `extendWorld` execution append only the new action suffix on top of the
+   * live world. Both reset whenever Anvil (re)starts.
+   */
+  private liveSessionId: string | null = null;
+  private appliedActionCount = 0;
+
   private installing = false;
   private state: WorldState = emptyWorldState();
   private readonly accounts = new Map<string, ResolvedAccount>();
@@ -116,6 +125,24 @@ export class Runtime {
     return this.lastManifestJson
       ? (JSON.parse(this.lastManifestJson) as WorldManifest)
       : null;
+  }
+
+  /**
+   * Mark which session (and how many of its actions) is live on the running
+   * Anvil. Called after a create/extend execution so a following extend knows
+   * its append cursor.
+   */
+  setLiveSession(sessionId: string, appliedActionCount: number): void {
+    this.liveSessionId = sessionId;
+    this.appliedActionCount = appliedActionCount;
+  }
+
+  getLiveSessionId(): string | null {
+    return this.liveSessionId;
+  }
+
+  getAppliedActionCount(): number {
+    return this.appliedActionCount;
   }
 
   isRunning(): boolean {
@@ -295,6 +322,8 @@ export class Runtime {
     this.publicClient = null;
     this.chain = null;
     this.lastSnapshotId = null;
+    this.liveSessionId = null;
+    this.appliedActionCount = 0;
     this.walletCache.clear();
     this.patchLocalnet({ status: "stopped", blockNumber: undefined });
   }
@@ -326,6 +355,10 @@ export class Runtime {
     this.contracts.clear();
     this.walletCache.clear();
     this.bus.clearLogs();
+    // A fresh chain has no live session yet; an extend cursor from the previous
+    // world must not carry over.
+    this.liveSessionId = null;
+    this.appliedActionCount = 0;
     this.state = emptyWorldState();
     this.commit();
   }
