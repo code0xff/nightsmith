@@ -4,6 +4,7 @@ import {
   type Plan,
   type WorldManifest,
 } from "@nightsmith/shared";
+import { validateExtension } from "../manifest/extension.js";
 import { validateManifest } from "../manifest/validate.js";
 import { validateNetwork } from "../safety/validateNetwork.js";
 import { validatePlanForExecution } from "../safety/validatePlan.js";
@@ -33,8 +34,66 @@ async function runManifest(
   saveSession({ id: sessionId, manifest });
   const report = await executeManifest(runtime, manifest, { sessionId });
   runtime.setLastManifest(manifest);
+  // If every action landed (an assertion may still have failed), the whole
+  // manifest is live — record it as the base a following extend appends onto.
+  if (!report.error && runtime.isRunning()) {
+    runtime.setLiveSession(sessionId, manifest.actions.length);
+  }
   saveSession({ id: sessionId, manifest, report });
   return { sessionId, report, state: runtime.getState() };
+}
+
+/**
+ * Append a manifest's new actions onto the already-running world without
+ * restarting Anvil. The manifest must be a strict extension of what is live
+ * (see validateExtension); the persisted session manifest still grows as a
+ * full-from-genesis spec, so replay stays deterministic.
+ */
+async function extendManifest(
+  runtime: Runtime,
+  rawManifest: WorldManifest,
+  baseSessionId?: string,
+): Promise<ExecuteResponse> {
+  const liveId = runtime.getLiveSessionId();
+  if (!runtime.isRunning() || !liveId) {
+    throw new AppError(
+      "Cannot extend: no running world. Create or run a world first.",
+      409,
+    );
+  }
+  if (baseSessionId && baseSessionId !== liveId) {
+    throw new AppError(
+      `Cannot extend: session "${baseSessionId}" is not the live world ("${liveId}").`,
+      409,
+    );
+  }
+
+  const next = validateManifest(rawManifest);
+  validateNetwork(next.network);
+
+  const applied = getSession(liveId).manifest;
+  const appliedCount = runtime.getAppliedActionCount();
+  validateExtension(applied, next, appliedCount); // throws 409 on any rewrite
+
+  const appliedNames = new Set(applied.accounts.map((a) => a.name));
+  const newAccounts = next.accounts.filter((a) => !appliedNames.has(a.name));
+
+  // Snapshot so a failed append can roll the live world back to its prior state.
+  await runtime.snapshot();
+  const report = await executeManifest(runtime, next, {
+    sessionId: liveId,
+    incremental: { fromIndex: appliedCount, newAccounts },
+  });
+
+  if (report.error) {
+    await runtime.revert();
+    return { sessionId: liveId, report, state: runtime.getState() };
+  }
+
+  runtime.setLiveSession(liveId, next.actions.length);
+  runtime.setLastManifest(next);
+  saveSession({ id: liveId, manifest: next, report });
+  return { sessionId: liveId, report, state: runtime.getState() };
 }
 
 /** Public entry for replaying/resuming a saved manifest (validated + run). */
@@ -58,17 +117,21 @@ function manifestToReplay(runtime: Runtime): WorldManifest {
  * by the REST route, the headless demo, and the CLI. It assumes the user has
  * already reviewed and confirmed the plan.
  */
-export async function runPlan(runtime: Runtime, plan: Plan): Promise<ExecuteResponse> {
+export async function runPlan(
+  runtime: Runtime,
+  plan: Plan,
+  opts: { baseSessionId?: string } = {},
+): Promise<ExecuteResponse> {
   const { manifest } = validatePlanForExecution(plan);
 
   switch (plan.intent) {
     case "createWorld":
     case "modifyWorld":
-    case "extendWorld":
     case "runScenario":
-      // extendWorld runs as a full rebuild here; the live incremental path is
-      // introduced in a later commit.
       return runManifest(runtime, manifest!);
+
+    case "extendWorld":
+      return extendManifest(runtime, manifest!, opts.baseSessionId);
 
     case "control": {
       const control = plan.control!;

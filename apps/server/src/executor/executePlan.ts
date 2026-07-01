@@ -1,11 +1,12 @@
 import type {
+  AccountDef,
   AssertionResult,
   ExecutionReport,
   StepResult,
   WorldManifest,
 } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
-import { errorMessage } from "../utils/errors.js";
+import { AppError, errorMessage } from "../utils/errors.js";
 import { setupAccounts } from "./accounts.js";
 import { evaluateAssertion } from "./assertions.js";
 import { describeAction, runAction } from "./scenarios.js";
@@ -14,6 +15,15 @@ export interface ExecuteOptions {
   sessionId: string;
   /** Restart Anvil for a clean, deterministic world (default true). */
   fresh?: boolean;
+  /**
+   * When set, append onto the already-running world instead of restarting:
+   * skip the Anvil (re)start, fund only the new accounts, and run only the
+   * action suffix from `fromIndex`. Assertions are always re-evaluated in full.
+   */
+  incremental?: {
+    fromIndex: number;
+    newAccounts: AccountDef[];
+  };
 }
 
 /**
@@ -40,20 +50,39 @@ export async function executeManifest(
     }
   };
 
+  const inc = opts.incremental;
   runtime.setExecution("running", `Executing "${manifest.name}"`);
   runtime.setScenario({ name: manifest.name, status: "running", assertions: [] });
-  runtime.log("info", `Executing world "${manifest.name}"`, "executor");
+  runtime.log(
+    "info",
+    inc
+      ? `Extending world "${manifest.name}" (+${manifest.actions.length - inc.fromIndex} actions)`
+      : `Executing world "${manifest.name}"`,
+    "executor",
+  );
 
   try {
-    if (runtime.isRunning() && opts.fresh !== false) {
-      await runtime.stopLocalnet();
+    if (inc) {
+      // Append mode: keep the running Anvil (and its deployed contracts) and
+      // only fund accounts that didn't exist before.
+      if (!runtime.isRunning()) {
+        throw new AppError("Cannot extend: localnet is not running", 409);
+      }
+      if (inc.newAccounts.length > 0) {
+        await step("Set up new accounts", () => setupAccounts(runtime, inc.newAccounts));
+      }
+    } else {
+      if (runtime.isRunning() && opts.fresh !== false) {
+        await runtime.stopLocalnet();
+      }
+      await step("Start Anvil", () =>
+        runtime.startLocalnet(manifest.network, manifest.name),
+      );
+      await step("Set up accounts", () => setupAccounts(runtime, manifest.accounts));
     }
-    await step("Start Anvil", () =>
-      runtime.startLocalnet(manifest.network, manifest.name),
-    );
-    await step("Set up accounts", () => setupAccounts(runtime, manifest.accounts));
 
-    for (const action of manifest.actions) {
+    const actions = inc ? manifest.actions.slice(inc.fromIndex) : manifest.actions;
+    for (const action of actions) {
       await step(describeAction(action), () => runAction(runtime, manifest, action));
     }
 

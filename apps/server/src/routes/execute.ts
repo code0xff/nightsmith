@@ -11,6 +11,8 @@ export function registerExecuteRoutes(app: FastifyInstance, runtime: Runtime): v
       throw new AppError("Foundry is installing — try again shortly", 423);
     }
     // Serialize execution so concurrent requests can't race Anvil ownership.
-    return runtime.runExclusive(() => runPlan(runtime, body.plan));
+    return runtime.runExclusive(() =>
+      runPlan(runtime, body.plan, { baseSessionId: body.baseSessionId }),
+    );
   });
 }
