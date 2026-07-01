@@ -70,6 +70,13 @@ export function validateManifest(input: unknown): WorldManifest {
   if (contractIds.size !== manifest.contracts.length) {
     problems.push("duplicate contract ids");
   }
+  // Two names sharing an addressIndex alias the same on-chain account. That
+  // aliasing executes differently under incremental extend (accounts funded
+  // after prior actions) than a from-genesis replay, breaking determinism.
+  const indices = manifest.accounts.map((a) => a.addressIndex);
+  if (new Set(indices).size !== indices.length) {
+    problems.push("duplicate account addressIndex");
+  }
 
   if (problems.length > 0) {
     throw new AppError("Manifest failed validation", 422, problems);

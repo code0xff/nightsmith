@@ -78,15 +78,18 @@ async function extendManifest(
   const appliedNames = new Set(applied.accounts.map((a) => a.name));
   const newAccounts = next.accounts.filter((a) => !appliedNames.has(a.name));
 
-  // Snapshot so a failed append can roll the live world back to its prior state.
-  await runtime.snapshot();
-  const report = await executeManifest(runtime, next, {
-    sessionId: liveId,
-    incremental: { fromIndex: appliedCount, newAccounts },
-  });
+  // Apply the new action suffix with full rollback (chain + in-memory world)
+  // if any action throws. `report.error` is set only when an ACTION fails; a
+  // failed assertion (report.status "failed", no error) means the actions did
+  // land on-chain, so — like a fresh run — we keep them and advance the cursor.
+  const report = await runtime.appendIncremental(() =>
+    executeManifest(runtime, next, {
+      sessionId: liveId,
+      incremental: { fromIndex: appliedCount, newAccounts },
+    }),
+  );
 
   if (report.error) {
-    await runtime.revert();
     return { sessionId: liveId, report, state: runtime.getState() };
   }
 

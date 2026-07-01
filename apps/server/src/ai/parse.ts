@@ -155,8 +155,15 @@ export function detectIntent(
   const hasChange = MODIFY_RE.test(prompt) || parseBalanceChange(prompt) != null;
   if (hasPrevious && hasChange) return "modifyWorld";
   // Append onto the already-running world when the prompt adds a new action and
-  // isn't a modify or an explicit "create a new world" request.
-  if (hasPrevious && running && !hasChange && !CREATE_RE.test(prompt)) {
+  // isn't a modify, a lifecycle control (stop/reset/…), or an explicit "create
+  // a new world" request.
+  if (
+    hasPrevious &&
+    running &&
+    !hasChange &&
+    parseControl(prompt) == null &&
+    !CREATE_RE.test(prompt)
+  ) {
     const additive =
       EXTEND_RE.test(prompt) ||
       parseTransfer(prompt) != null ||

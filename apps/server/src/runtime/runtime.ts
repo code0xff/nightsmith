@@ -59,6 +59,20 @@ interface ResolvedContract {
 }
 
 /**
+ * A full pre-append snapshot of the runtime's in-memory world (registries,
+ * UI state, and the live cursor). Anvil's evm_snapshot only rolls back the
+ * chain; this captures everything else so a failed extend can be fully undone.
+ */
+interface RuntimeCheckpoint {
+  accounts: Map<string, ResolvedAccount>;
+  contracts: Map<string, ResolvedContract>;
+  walletCache: Map<string, WalletClient>;
+  state: WorldState;
+  liveSessionId: string | null;
+  appliedActionCount: number;
+}
+
+/**
  * The Runtime ties together the Anvil process, viem clients, the live world
  * state, and the event bus. It is the single mutable surface the executor and
  * routes operate on, and it broadcasts every state change to the UI.
@@ -346,8 +360,59 @@ export class Runtime {
     if (!target) throw new AppError("No snapshot available to revert to", 409);
     const ok = await revertSnapshot(this.getPublicClient(), target);
     this.log(ok ? "info" : "warning", `Revert to ${target} ${ok ? "ok" : "failed"}`, "anvil");
+    // The chain no longer matches the applied-action cursor, and the in-memory
+    // registries weren't rolled back — force a fresh create/replay before the
+    // world can be extended again.
+    this.liveSessionId = null;
+    this.appliedActionCount = 0;
     await this.refreshChainStatus();
     return ok;
+  }
+
+  /**
+   * Run an incremental append with full rollback: snapshot the chain AND the
+   * in-memory world before `run`, and if it reports an error, revert both so a
+   * failed extend can't leave orphaned contracts/accounts or a stale cursor.
+   * Uses a private snapshot so it doesn't clobber the user's manual snapshot.
+   */
+  async appendIncremental<T extends { error?: string }>(
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const checkpoint = this.capture();
+    const snapshotId = await takeSnapshot(this.getPublicClient());
+    const result = await run();
+    if (result.error) {
+      await revertSnapshot(this.getPublicClient(), snapshotId);
+      this.restore(checkpoint);
+      await this.refreshChainStatus();
+      this.log("warning", "Extend failed — rolled back to the pre-extend world", "executor");
+    }
+    return result;
+  }
+
+  private capture(): RuntimeCheckpoint {
+    return {
+      accounts: new Map(this.accounts),
+      contracts: new Map(this.contracts),
+      walletCache: new Map(this.walletCache),
+      state: structuredClone(this.state),
+      liveSessionId: this.liveSessionId,
+      appliedActionCount: this.appliedActionCount,
+    };
+  }
+
+  private restore(cp: RuntimeCheckpoint): void {
+    const reload = <V>(map: Map<string, V>, saved: Map<string, V>) => {
+      map.clear();
+      for (const [k, v] of saved) map.set(k, v);
+    };
+    reload(this.accounts, cp.accounts);
+    reload(this.contracts, cp.contracts);
+    reload(this.walletCache, cp.walletCache);
+    this.state = cp.state;
+    this.liveSessionId = cp.liveSessionId;
+    this.appliedActionCount = cp.appliedActionCount;
+    this.commit();
   }
 
   private resetWorldState(): void {
