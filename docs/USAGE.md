@@ -36,19 +36,39 @@ process (it streams logs/state over `ws://localhost:4040/ws`).
 3. Click **Run**. Watch logs stream and the world-state panels update:
    localnet status, MockUSDC address, Alice/Bob balances, transactions, and the
    assertion result (Bob ends with 110 USDC).
-4. Modify and re-run, e.g.:
+4. **Extend the running world** with a follow-up — applied on top of the live
+   node without restarting (contracts keep their addresses, blocks keep
+   climbing), e.g.:
+   > Then Alice sends Bob 25 USDC
+5. Modify and re-run (a change to earlier setup rebuilds the world from
+   scratch — deterministic replay), e.g.:
    > Bob의 초기 잔액을 500 USDC로 바꾸고 다시 실행해줘
-5. Use the direct controls (Start / Stop / Reset / Snapshot / Revert / Replay /
+6. Use the direct controls (Start / Stop / Reset / Snapshot / Revert / Replay /
    Export) at any time.
 
 ### Prompt examples
 
 - "Create a local USDC payment test world with Alice and Bob"
+- "Then Alice sends Bob 25 USDC" — append onto the running world (extend)
+- "Also mint 500 USDC to Carol" — append a new account + action (extend)
 - "Replay the last scenario"
 - "Reset the localnet and run the payment flow again"
 - "Explain why the last transaction reverted"
 - "Stop the localnet"
 - "Export this world as a replayable manifest"
+
+### Extending vs. modifying a world
+
+A follow-up that **adds** to what's running (a new transfer, mint, or call) is an
+**extend**: Nightsmith appends just the new actions onto the live Anvil — no
+restart, deployed contracts keep their addresses, and the block number keeps
+climbing. The session's manifest still grows as a full from-genesis spec, so
+`replay` reproduces the identical world deterministically.
+
+A request that **changes earlier setup** (e.g. a different initial balance) is a
+**modify**: history can't be rewritten in place, so the world is rebuilt from
+scratch. An extend that would rewrite already-applied history is rejected — ask
+to modify or recreate instead.
 
 ## Development
 
@@ -56,6 +76,7 @@ process (it streams logs/state over `ws://localhost:4040/ws`).
 pnpm dev        # server in watch mode (tsx) on :4040
 pnpm dev:web    # Vite dev server on :4042, proxies /api and /ws to :4040
 pnpm demo       # headless prompt -> plan -> execute (asserts Bob = 110 USDC)
+pnpm --filter @nightsmith/server demo:extend  # create then extend live (Bob = 135)
 pnpm typecheck  # typecheck all packages
 ```
 
