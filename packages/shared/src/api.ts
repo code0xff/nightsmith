@@ -28,6 +28,12 @@ export const ExecuteRequest = z.object({
   plan: Plan,
   /** Echoed back for traceability; optional. */
   planId: z.string().optional(),
+  /**
+   * The session whose live world an `extendWorld` plan should append to. The
+   * server also tracks the live session internally; this lets the client be
+   * explicit about which world it means. Ignored for non-extend intents.
+   */
+  baseSessionId: z.string().optional(),
 });
 export type ExecuteRequest = z.infer<typeof ExecuteRequest>;
 

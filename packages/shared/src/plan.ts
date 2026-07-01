@@ -10,8 +10,14 @@ import { WorldManifest } from "./manifest.js";
 export const PlanIntent = z.enum([
   /** Build a brand-new world from scratch. */
   "createWorld",
-  /** Modify an existing world (e.g. change a balance) and re-run. */
+  /** Modify an existing world (e.g. change a balance) and re-run from scratch. */
   "modifyWorld",
+  /**
+   * Append new actions onto the already-running world without restarting Anvil.
+   * The persisted manifest still grows as a full-from-genesis spec (so replay
+   * stays deterministic); only the new action suffix is applied live.
+   */
+  "extendWorld",
   /** Re-run an existing scenario. */
   "runScenario",
   /** Control the localnet lifecycle (stop/reset/snapshot/revert/replay/resume). */

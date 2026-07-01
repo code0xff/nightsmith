@@ -64,7 +64,10 @@ export async function runPlan(runtime: Runtime, plan: Plan): Promise<ExecuteResp
   switch (plan.intent) {
     case "createWorld":
     case "modifyWorld":
+    case "extendWorld":
     case "runScenario":
+      // extendWorld runs as a full rebuild here; the live incremental path is
+      // introduced in a later commit.
       return runManifest(runtime, manifest!);
 
     case "control": {

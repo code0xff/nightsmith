@@ -243,6 +243,10 @@ export const mockProvider: AiProvider = {
         return createWorldPlan(input.prompt);
       case "modifyWorld":
         return modifyWorldPlan(input.prompt, input.previousManifest!);
+      case "extendWorld":
+        // Real append-only planning lands in a later commit; until then extend
+        // behaves like modify (a full deterministic rebuild), which is safe.
+        return modifyWorldPlan(input.prompt, input.previousManifest!);
       case "runScenario":
         return runScenarioPlan(input.previousManifest);
       case "control":

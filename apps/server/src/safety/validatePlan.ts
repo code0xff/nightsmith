@@ -25,6 +25,7 @@ export function validatePlanForExecution(plan: Plan): ValidatedPlan {
   switch (plan.intent) {
     case "createWorld":
     case "modifyWorld":
+    case "extendWorld":
     case "runScenario": {
       if (!plan.manifest) {
         throw new SafetyError(`Intent "${plan.intent}" requires a manifest`);
