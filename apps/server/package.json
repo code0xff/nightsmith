@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "demo": "tsx src/demo.ts",
+    "demo:extend": "tsx src/demo-extend.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "start": "node dist/cli.js serve"
