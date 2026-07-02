@@ -16,8 +16,19 @@ export interface ValidatedPlan {
  * any violation. This runs in addition to (not instead of) user confirmation.
  */
 export function validatePlanForExecution(plan: Plan): ValidatedPlan {
-  // No secrets may ride along in any plan field.
-  const secretHits = scanForSecrets(JSON.stringify(plan));
+  // Scan everything EXCEPT the manifest for secrets. A 32-byte hex value is
+  // indistinguishable from a private key by pattern alone, but it's also
+  // completely normal on-chain data (a bytes32 role identifier, tx hash,
+  // etc.) in a contract call's args or an assertion's expected value; those
+  // fields are never usable as a signing key (accounts are always resolved by
+  // name — see validateManifest), so scanning them only produces false
+  // positives. `network.mnemonic` is the one manifest field a real secret
+  // could meaningfully land in, and it's independently checked against the
+  // public test mnemonic by validateNetwork. Excluding by field (rather than
+  // allowlisting the free-text ones) means any new prose field added to Plan
+  // later is covered automatically instead of silently bypassing the scan.
+  const { manifest: _manifest, ...planWithoutManifest } = plan;
+  const secretHits = scanForSecrets(JSON.stringify(planWithoutManifest));
   if (secretHits.length > 0) {
     throw new SafetyError("Plan contains secret-looking content", secretHits);
   }
