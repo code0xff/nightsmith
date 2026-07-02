@@ -1,5 +1,30 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+
+/** Files that mark the workspace root — stop the upward `.env` search here. */
+const ROOT_MARKERS = ["pnpm-workspace.yaml", ".git"];
+
+/**
+ * Locate the `.env` to load. `NIGHTSMITH_ENV_FILE` wins if set. Otherwise walk
+ * UP from the current directory and return the nearest `.env`, stopping at the
+ * workspace root so we never read a stray `.env` outside the repo. This makes
+ * the loader independent of the launch directory — the monorepo's single root
+ * `.env` is found whether you run from the repo root or from `apps/server`
+ * (e.g. via `pnpm --filter`), which cwd-relative loading got wrong.
+ */
+function findEnvFile(): string | undefined {
+  if (process.env.NIGHTSMITH_ENV_FILE) return process.env.NIGHTSMITH_ENV_FILE;
+  let dir = process.cwd();
+  for (;;) {
+    const candidate = resolve(dir, ".env");
+    if (existsSync(candidate)) return candidate;
+    if (ROOT_MARKERS.some((m) => existsSync(resolve(dir, m)))) break; // at repo root, no .env
+    const parent = dirname(dir);
+    if (parent === dir) break; // filesystem root
+    dir = parent;
+  }
+  return undefined;
+}
 
 /**
  * Minimal, dependency-free `.env` loader run as a side effect. Imported FIRST
@@ -8,8 +33,8 @@ import { resolve } from "node:path";
  * gaps. Set NIGHTSMITH_ENV_FILE to point elsewhere; missing files are ignored.
  */
 function loadEnvFile(): void {
-  const path = process.env.NIGHTSMITH_ENV_FILE ?? resolve(process.cwd(), ".env");
-  if (!existsSync(path)) return;
+  const path = findEnvFile();
+  if (!path || !existsSync(path)) return;
   try {
     for (const rawLine of readFileSync(path, "utf8").split("\n")) {
       let line = rawLine.trim();
