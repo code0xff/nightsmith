@@ -153,7 +153,11 @@ selection. The order is:
 2. **Codex CLI** — used if `codex` is on your PATH (no key; reuses your existing
    Codex/ChatGPT login). Runs `codex exec` read-only, ephemeral, in a throwaway
    working dir, as a pure plan generator.
-3. **Mock** — the deterministic, offline default; always available, no key/network.
+3. **Claude Code CLI** — used if `claude` is on your PATH (no key; reuses your
+   existing Claude Code login). Runs `claude -p` non-interactively in a
+   throwaway working dir outside the repo, with all built-in tools and MCP
+   servers disabled, as a pure plan generator.
+4. **Mock** — the deterministic, offline default; always available, no key/network.
 
 The cockpit header's **AI** badge shows which provider is active; click it to see
 the resolution. The only configuration is the OpenAI key, set via the
@@ -162,6 +166,8 @@ environment — Nightsmith never stores it on disk or accepts it through the UI:
 - `OPENAI_API_KEY` — enables the OpenAI provider (in your `.env` or shell), then
   restart the server.
 - Model: `NIGHTSMITH_OPENAI_MODEL` (default `gpt-5.5`).
+- Model for the Claude CLI fallback: `NIGHTSMITH_CLAUDE_MODEL` (optional;
+  defaults to the CLI's own default model).
 
 The key is sent only to OpenAI when generating a plan — never logged, never
 returned by the API. The log console shows which provider produced each plan
@@ -187,6 +193,7 @@ plan; the deterministic executor still runs it after validation and confirmation
 | `NIGHTSMITH_DATA_DIR` | `~/.nightsmith` | Session store location |
 | `OPENAI_API_KEY` | — | OpenAI key (enables the OpenAI provider; overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
+| `NIGHTSMITH_CLAUDE_MODEL` | — | Model for the Claude CLI planner fallback (alias or full name; defaults to the CLI's own default) |
 | `NIGHTSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `NIGHTSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |
 | `NIGHTSMITH_ALLOWED_HOSTS` | — | Extra allowed `Host` values (comma-separated) beyond localhost |
