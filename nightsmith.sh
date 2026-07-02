@@ -17,7 +17,7 @@ BIND="${NIGHTSMITH_BIND_HOST:-127.0.0.1}"
 # Build the image on first run (or when NIGHTSMITH_REBUILD=1).
 if [ "${NIGHTSMITH_REBUILD:-0}" = "1" ] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "Building $IMAGE …" >&2
-  docker build -t "$IMAGE" "$HERE"
+  docker build --provenance=false --sbom=false -t "$IMAGE" "$HERE"
 fi
 
 exec docker run --rm -it \

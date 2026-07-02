@@ -87,14 +87,19 @@ program
   .description("Check toolchain availability and ports")
   .action(async () => {
     let ok = true;
-    for (const tool of ["anvil", "forge", "cast"]) {
+    // Only `anvil` is required at runtime — the server spawns it for every
+    // world. `forge`/`cast` are dev-time (artifact compilation) / diagnostic
+    // tools the running cockpit never invokes, so they're optional.
+    const anvilVersion = await toolVersion("anvil");
+    if (anvilVersion) {
+      logger.info(`anvil: ${anvilVersion}`);
+    } else {
+      logger.error("anvil: not found on PATH (required)");
+      ok = false;
+    }
+    for (const tool of ["forge", "cast"]) {
       const version = await toolVersion(tool);
-      if (version) {
-        logger.info(`${tool}: ${version}`);
-      } else {
-        logger.error(`${tool}: not found on PATH`);
-        ok = false;
-      }
+      logger.info(version ? `${tool}: ${version}` : `${tool}: not found (optional — dev tooling only)`);
     }
     for (const [label, port] of [
       ["server", SERVER_PORT],

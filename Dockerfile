@@ -25,13 +25,19 @@ RUN pnpm --filter @nightsmith/server deploy --prod --legacy /app \
 # ---- runtime: node + foundry only ----
 FROM node:22-slim AS runtime
 
-# Foundry toolchain (anvil/forge/cast) — installs the latest stable release.
+# Foundry — the runtime only needs `anvil` (the server spawns it per world);
+# forge/cast/chisel are dev-time/diagnostic tools, so we drop them and the
+# foundryup download cache to keep the image small.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH="/root/.foundry/bin:${PATH}"
+# Remove the unused binaries and the versions cache IN THE SAME layer as the
+# install (a later-layer delete wouldn't shrink the image).
 RUN curl -L https://foundry.paradigm.xyz | bash \
-    && foundryup
+    && foundryup \
+    && rm -f /root/.foundry/bin/forge /root/.foundry/bin/cast /root/.foundry/bin/chisel \
+    && rm -rf /root/.foundry/versions /tmp/*
 
 WORKDIR /app
 COPY --from=builder /app /app
