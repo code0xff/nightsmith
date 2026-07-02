@@ -38,10 +38,12 @@ export function webDistDir(): string | null {
   }
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    join(here, "../web-dist"), // published npm package: dist/ -> ../web-dist
     join(here, "../../web/dist"), // bundled: apps/server/dist -> apps/web/dist
     join(here, "../../../web/dist"), // src/utils -> apps/web/dist
     join(process.cwd(), "apps/web/dist"),
+    // Published npm package layout (dist/ -> ../web-dist). Last, so a stale
+    // packed web-dist can never shadow the live monorepo build in dev.
+    join(here, "../web-dist"),
   ];
   return candidates.find((dir) => existsSync(join(dir, "index.html"))) ?? null;
 }
