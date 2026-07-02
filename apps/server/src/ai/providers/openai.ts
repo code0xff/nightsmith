@@ -43,7 +43,10 @@ async function callOpenAI(apiKey: string, messages: ChatMessage[]): Promise<stri
       },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0,
+        // No `temperature` override: newer reasoning-style models (e.g.
+        // gpt-5.5) reject any non-default value with a 400, so we let each
+        // model use its own default rather than hardcoding one that not
+        // every model supports.
         response_format: { type: "json_object" },
         messages,
       }),

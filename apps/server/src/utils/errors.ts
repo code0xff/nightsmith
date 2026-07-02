@@ -18,8 +18,11 @@ export class SafetyError extends AppError {
   }
 }
 
-/** Narrow an unknown thrown value to a readable message. */
+/** Narrow an unknown thrown value to a readable message, including any AppError details. */
 export function errorMessage(err: unknown): string {
+  if (err instanceof AppError && err.details?.length) {
+    return `${err.message} (${err.details.join("; ")})`;
+  }
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
   try {
