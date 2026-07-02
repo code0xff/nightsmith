@@ -1,5 +1,35 @@
 # Usage
 
+## Quick start (zero setup)
+
+Two ways to run without cloning or installing Foundry yourself.
+
+### Docker — only Docker required
+
+The image bundles Node, Foundry (anvil/forge/cast), and the built cockpit; Anvil
+runs inside the container as a child process the server manages.
+
+```bash
+# with the repo checked out:
+OPENAI_API_KEY=sk-... docker compose up        # → http://localhost:4040
+# or the one-line wrapper (builds the image on first run):
+OPENAI_API_KEY=sk-... ./nightsmith.sh
+```
+
+Ports **4040** (cockpit) and **8545** (Anvil RPC, so a browser wallet can reach
+it) are published; sessions persist in the `nightsmith-data` volume. The
+`OPENAI_API_KEY` is optional — without it the planner uses the offline mock.
+Run any subcommand via the wrapper, e.g. `./nightsmith.sh doctor`.
+
+### npx — only Node required
+
+```bash
+npx @nightsmith/server serve                   # → http://localhost:4040
+```
+
+Foundry isn't bundled here; if it's missing the cockpit offers a one-click,
+consented install (see below).
+
 ## Install & build
 
 ```bash
