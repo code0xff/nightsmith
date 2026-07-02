@@ -70,7 +70,63 @@ export async function deployMockErc20(
   return address;
 }
 
-export const MockErc20AbiForReads = mockErc20Abi;
+/**
+ * True for `view`/`pure` functions. Also honors the pre-Solidity-0.6 `constant`
+ * flag for ABIs that predate `stateMutability` (viem's `Abi` type doesn't
+ * declare it, but an uploaded artifact's raw JSON may still carry it).
+ */
+function isReadOnly(item: { stateMutability?: string; constant?: boolean }): boolean {
+  if (item.stateMutability) return item.stateMutability === "view" || item.stateMutability === "pure";
+  return item.constant === true;
+}
+
+/** Whether an ABI declares a zero-arg view/pure function by this name whose single output matches. */
+function hasNoArgView(abi: Abi, name: string, isValidOutput: (type: string) => boolean): boolean {
+  return abi.some(
+    (item) =>
+      item.type === "function" &&
+      item.name === name &&
+      isReadOnly(item) &&
+      item.inputs.length === 0 &&
+      item.outputs.length === 1 &&
+      isValidOutput(item.outputs[0]!.type),
+  );
+}
+
+const isUintType = (type: string) => /^uint\d*$/.test(type);
+
+/**
+ * Best-effort read of `symbol()`/`decimals()` if the ABI declares them with
+ * the expected shape — most ERC20-shaped uploads have these, but they're not
+ * required, so any failure (missing/mismatched function, or a
+ * declared-but-reverting one) falls back to blank metadata rather than
+ * failing the deploy.
+ */
+async function readTokenMeta(
+  publicClient: ReturnType<Runtime["getPublicClient"]>,
+  address: `0x${string}`,
+  abi: Abi,
+): Promise<{ symbol: string; decimals: number }> {
+  let symbol = "";
+  let decimals = 0;
+  if (hasNoArgView(abi, "symbol", (t) => t === "string")) {
+    try {
+      symbol = (await publicClient.readContract({ address, abi, functionName: "symbol" })) as string;
+    } catch {
+      // Not actually readable (e.g. reverts) — keep the blank fallback.
+    }
+  }
+  if (hasNoArgView(abi, "decimals", isUintType)) {
+    try {
+      decimals = Number(
+        await publicClient.readContract({ address, abi, functionName: "decimals" }),
+      );
+    } catch {
+      // Same as above.
+    }
+  }
+  return { symbol, decimals };
+}
 
 /** Deploy a user-uploaded artifact with constructor args (no runtime solc). */
 export async function deployArtifact(
@@ -105,12 +161,14 @@ export async function deployArtifact(
     throw new Error(`Deployment of ${def.id} produced no contract address`);
   }
 
+  const { symbol, decimals } = await readTokenMeta(publicClient, address, abi);
+
   runtime.registerContract({
     id: def.id,
     kind: def.kind,
     name: def.name,
-    symbol: "",
-    decimals: 0,
+    symbol,
+    decimals,
     address,
     deployer,
     abi,
@@ -119,8 +177,8 @@ export async function deployArtifact(
     id: def.id,
     kind: def.kind,
     name: def.name,
-    symbol: "",
-    decimals: 0,
+    symbol,
+    decimals,
     address,
   });
   runtime.addTransaction({

@@ -2,7 +2,7 @@ import type { Action, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { callFunction } from "./calls.js";
 import { deployArtifact, deployMockErc20 } from "./contracts.js";
-import { mint, transfer } from "./tokens.js";
+import { mint, refreshAllTokenBalances, transfer } from "./tokens.js";
 
 /** Human-readable label for a manifest action (used in reports/preview). */
 export function describeAction(action: Action): string {
@@ -18,8 +18,7 @@ export function describeAction(action: Action): string {
   }
 }
 
-/** Execute a single manifest action against the running world. */
-export async function runAction(
+async function runSingleAction(
   runtime: Runtime,
   manifest: WorldManifest,
   action: Action,
@@ -50,4 +49,19 @@ export async function runAction(
       await callFunction(runtime, action);
       return;
   }
+}
+
+/**
+ * Execute a single manifest action against the running world, then refresh
+ * every token-shaped contract's balances for every named account — so the
+ * live panel stays in sync regardless of which action type moved tokens
+ * (mint/transfer, or a generic `call` on a custom uploaded ERC20).
+ */
+export async function runAction(
+  runtime: Runtime,
+  manifest: WorldManifest,
+  action: Action,
+): Promise<void> {
+  await runSingleAction(runtime, manifest, action);
+  await refreshAllTokenBalances(runtime, manifest);
 }
