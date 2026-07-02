@@ -106,7 +106,7 @@ export function PlanPreview() {
           />
           <Section icon={<ShieldCheck className="size-3" />} title="Safety" items={plan.safetyNotes} />
 
-          <div className="sticky bottom-0 flex items-center gap-2 border-t bg-card pt-2">
+          <div className="flex items-center gap-2 border-t pt-3">
             <Button onClick={runCurrentPlan} disabled={busy}>
               <Play />
               Run
