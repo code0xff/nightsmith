@@ -2,7 +2,7 @@
 
 ## Quick start (zero setup)
 
-Two ways to run without cloning or installing Foundry yourself.
+Two ways to run without installing anything yourself first.
 
 ### Docker — only Docker required
 
@@ -28,24 +28,26 @@ they must not be reachable from the LAN. For intentional LAN access set
 Sessions persist in the `nightsmith-data` volume. Run any subcommand via the
 wrapper, e.g. `./nightsmith.sh doctor`.
 
-### npx — only Node required
+### Native — no Docker, no manual toolchain setup
 
 ```bash
-npx @nightsmith/server serve                   # → http://localhost:4040
+./run-local.sh
 ```
 
-Foundry isn't bundled here; if it's missing the cockpit offers a one-click,
-consented install (see below).
-
-> Maintainers: publish with **`pnpm publish`** (from `apps/server`), not
-> `npm publish` — pnpm rewrites the `workspace:*` refs to real versions.
+Checks Node (≥ 20), pnpm, and Foundry's `anvil` in order; any that are missing
+are installed via their standard method — **nvm/Homebrew/apt for Node**,
+**corepack for pnpm**, and the **official Foundry installer** for `anvil`
+(same fixed `curl -L https://foundry.paradigm.xyz | bash && foundryup` pipeline
+the cockpit's own UI install flow uses) — then runs `pnpm install`, `pnpm build`,
+and `nightsmith serve`. Each install step asks for confirmation first; set
+`NIGHTSMITH_YES=1` to skip the prompts (e.g. in CI).
 
 ## Install & build
 
 ```bash
 pnpm install
 pnpm build                 # builds shared, contracts, server, and the web UI
-pnpm --filter @nightsmith/server exec nightsmith doctor   # check anvil/forge/cast + ports
+pnpm --filter @nightsmith/server exec node dist/cli.js doctor   # check anvil/forge/cast + ports
 ```
 
 Requirements: Node ≥ 20, pnpm ≥ 11, and Foundry (`anvil`, `forge`, `cast`) on `PATH`.
@@ -60,7 +62,7 @@ localnet without Anvil.
 ## Run the cockpit
 
 ```bash
-pnpm --filter @nightsmith/server exec nightsmith serve
+pnpm --filter @nightsmith/server exec node dist/cli.js serve
 # open http://localhost:4040
 ```
 
@@ -123,6 +125,13 @@ pnpm typecheck  # typecheck all packages
 In dev, run `pnpm dev` and `pnpm dev:web` in two terminals and open the Vite URL.
 
 ## CLI
+
+The subcommands below (`serve`, `stop`, `doctor`, `export`, `replay`) all live on
+one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it isn't
+on `PATH` by default — run it via `pnpm --filter @nightsmith/server exec node
+dist/cli.js <command>`, or `./nightsmith.sh <command>` (Docker) / `./run-local.sh`
+for the zero-setup wrappers. A global install (`npm i -g @nightsmith/server`,
+once published) would put the bare `nightsmith` command below on `PATH`.
 
 ```bash
 nightsmith serve              # start server + web cockpit
