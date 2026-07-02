@@ -1,10 +1,12 @@
-import { Activity } from "lucide-react";
+import { Activity, Wallet } from "lucide-react";
 import type { LocalnetStatus as Status } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { useAppStore } from "@/state/useAppStore";
 import { ControlPanel } from "@/components/ControlPanel";
+import { addLocalnetToWallet } from "@/lib/wallet";
 
 const STATUS_VARIANT: Record<Status, NonNullable<BadgeProps["variant"]>> = {
   running: "success",
@@ -35,6 +37,8 @@ function Row({
 
 export function LocalnetStatus() {
   const localnet = useAppStore((s) => s.world.localnet);
+  const canAddToWallet =
+    localnet.status === "running" && !!localnet.rpcUrl && localnet.chainId != null;
 
   return (
     <Card>
@@ -56,6 +60,25 @@ export function LocalnetStatus() {
         <Row label="Fork" value={localnet.forked ? "yes" : "no"} />
         <Row label="Session" value={localnet.sessionName} />
       </CardContent>
+      <div className="border-t px-3 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={!canAddToWallet}
+          title={canAddToWallet ? undefined : "Start the localnet first"}
+          onClick={() =>
+            addLocalnetToWallet({
+              chainId: localnet.chainId!,
+              rpcUrl: localnet.rpcUrl!,
+              sessionName: localnet.sessionName,
+            })
+          }
+        >
+          <Wallet />
+          Add to wallet
+        </Button>
+      </div>
       <ControlPanel />
     </Card>
   );
