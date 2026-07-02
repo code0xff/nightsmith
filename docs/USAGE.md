@@ -10,19 +10,23 @@ The image bundles Node, Foundry (anvil/forge/cast), and the built cockpit; Anvil
 runs inside the container as a child process the server manages.
 
 ```bash
-# with the repo checked out:
-OPENAI_API_KEY=sk-... docker compose up        # → http://localhost:4040
+# with the repo checked out — the key is read automatically from ./.env:
+docker compose up                              # → http://localhost:4040
 # or the one-line wrapper (builds the image on first run):
-OPENAI_API_KEY=sk-... ./nightsmith.sh
+./nightsmith.sh
 ```
+
+Both **auto-read `OPENAI_API_KEY` from the repo `.env`** (Compose loads `.env`
+for interpolation; the wrapper parses it directly), so no manual `export` is
+needed. A shell `export OPENAI_API_KEY=...` overrides the file; with no key the
+planner uses the offline **mock**.
 
 Ports **4040** (cockpit) and **8545** (Anvil RPC, so a browser wallet can reach
 it) are published to **loopback only** — Anvil's dev accounts are unlocked, so
 they must not be reachable from the LAN. For intentional LAN access set
 `NIGHTSMITH_BIND_HOST=0.0.0.0` (compose and `nightsmith.sh` both honour it).
-Sessions persist in the `nightsmith-data` volume. The `OPENAI_API_KEY` is
-optional — without it the planner uses the offline mock. Run any subcommand via
-the wrapper, e.g. `./nightsmith.sh doctor`.
+Sessions persist in the `nightsmith-data` volume. Run any subcommand via the
+wrapper, e.g. `./nightsmith.sh doctor`.
 
 ### npx — only Node required
 
