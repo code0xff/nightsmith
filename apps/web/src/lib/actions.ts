@@ -56,6 +56,7 @@ export async function runCurrentPlan(): Promise<void> {
         toast.success("Execution completed", {
           description: total ? `${passed}/${total} assertions passed` : undefined,
         });
+        store.clearPrompt(); // world built — clear the prompt for the next one
       } else {
         toast.error("Execution failed", {
           description: report.error ?? `${passed}/${total} assertions passed`,

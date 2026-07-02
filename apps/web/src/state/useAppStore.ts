@@ -21,6 +21,8 @@ interface AppState {
   planId: string | null;
   /** The most recently executed session — the live world a follow-up extends. */
   sessionId: string | null;
+  /** Bumped after a successful execution so the prompt box can clear itself. */
+  promptResetSignal: number;
   busy: boolean;
   autoScroll: boolean;
   levelFilter: Set<LogLevel>;
@@ -34,6 +36,7 @@ interface AppState {
   resetSnapshot: () => void;
   setPlan: (plan: Plan | null, planId?: string | null) => void;
   setSessionId: (id: string | null) => void;
+  clearPrompt: () => void;
   setBusy: (v: boolean) => void;
   setAutoScroll: (v: boolean) => void;
   toggleLevel: (level: LogLevel) => void;
@@ -47,6 +50,7 @@ export const useAppStore = create<AppState>((set) => ({
   plan: null,
   planId: null,
   sessionId: null,
+  promptResetSignal: 0,
   busy: false,
   autoScroll: true,
   levelFilter: new Set(ALL_LEVELS),
@@ -79,6 +83,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   setPlan: (plan, planId = null) => set({ plan, planId }),
   setSessionId: (sessionId) => set({ sessionId }),
+  clearPrompt: () => set((s) => ({ promptResetSignal: s.promptResetSignal + 1 })),
   setBusy: (v) => set({ busy: v }),
   setAutoScroll: (v) => set({ autoScroll: v }),
   toggleLevel: (level) =>

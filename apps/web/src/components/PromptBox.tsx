@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SendHorizontal, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ const EXAMPLES = [
 export function PromptBox() {
   const [value, setValue] = useState("");
   const busy = useAppStore((s) => s.busy);
+  const promptResetSignal = useAppStore((s) => s.promptResetSignal);
+
+  // Clear the box once an execution completes successfully (signal bumps).
+  useEffect(() => {
+    if (promptResetSignal > 0) setValue("");
+  }, [promptResetSignal]);
 
   const submit = () => {
     submitPrompt(value);
