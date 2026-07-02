@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AiStatus } from "@nightsmith/shared";
 import { isOpenAiConnected } from "../ai/credentials.js";
+import { isClaudeAvailable } from "../ai/providers/claude.js";
 import { isCodexAvailable } from "../ai/providers/codex.js";
 import { activeProvider, PROVIDER_NAMES } from "../ai/planner.js";
 
@@ -11,6 +12,7 @@ async function status(): Promise<AiStatus> {
     provider: await activeProvider(),
     openaiConnected: isOpenAiConnected(),
     codexAvailable: await isCodexAvailable(),
+    claudeAvailable: await isClaudeAvailable(),
     model: MODEL,
     providers: PROVIDER_NAMES,
   };

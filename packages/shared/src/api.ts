@@ -115,19 +115,22 @@ export const SessionListResponse = z.object({
 export type SessionListResponse = z.infer<typeof SessionListResponse>;
 
 // AI provider configuration
-export const ProviderName = z.enum(["mock", "openai", "codex"]);
+export const ProviderName = z.enum(["mock", "openai", "codex", "claude"]);
 export type ProviderName = z.infer<typeof ProviderName>;
 
 export const AiStatus = z.object({
   /**
    * The provider that will actually run now, auto-resolved by availability:
-   * OpenAI (if a key is set) → Codex (if the CLI is installed) → mock.
+   * OpenAI (if a key is set) → Codex (if the CLI is installed) → Claude Code
+   * CLI (if installed) → mock.
    */
   provider: ProviderName,
   /** Whether an OpenAI key is available (env or stored). Never the key itself. */
   openaiConnected: z.boolean(),
   /** Whether the Codex CLI is installed (usable as a no-key fallback). */
   codexAvailable: z.boolean(),
+  /** Whether the Claude Code CLI is installed (usable as a no-key fallback). */
+  claudeAvailable: z.boolean(),
   model: z.string(),
   providers: z.array(ProviderName),
 });

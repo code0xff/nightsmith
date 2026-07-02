@@ -4,11 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Plan as PlanSchema, type Plan } from "@nightsmith/shared";
 import { AppError } from "../../utils/errors.js";
-import {
-  PLANNER_JSON_CONTRACT,
-  PLANNER_SYSTEM_PROMPT,
-  summarizeArtifacts,
-} from "../prompts/plannerPrompt.js";
+import { buildCliPrompt, extractJsonObject } from "./cliShared.js";
 import type { AiProvider, PlanInput } from "./types.js";
 
 const CODEX_TIMEOUT_MS = 120_000;
@@ -34,31 +30,6 @@ export async function isCodexAvailable(): Promise<boolean> {
   }
   availableCache = { value, checkedAt: Date.now() };
   return value;
-}
-
-function buildPrompt(input: PlanInput): string {
-  const parts = [
-    PLANNER_SYSTEM_PROMPT,
-    PLANNER_JSON_CONTRACT,
-    `User request: ${input.prompt}`,
-    `Localnet running: ${input.running}`,
-  ];
-  if (input.previousManifest) {
-    parts.push(`Previous manifest:\n${JSON.stringify(input.previousManifest)}`);
-  }
-  const artifacts = summarizeArtifacts(input.artifacts);
-  if (artifacts) parts.push(artifacts);
-  parts.push("Output ONLY the JSON object — no prose, no code fences, no tool calls.");
-  return parts.join("\n\n");
-}
-
-function extractJson(text: string): unknown {
-  const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  // Be lenient: grab the outermost JSON object if the model added stray text.
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  const slice = start >= 0 && end > start ? trimmed.slice(start, end + 1) : trimmed;
-  return JSON.parse(slice);
 }
 
 /**
@@ -92,10 +63,10 @@ export const codexProvider: AiProvider = {
           outFile,
           "-",
         ],
-        { input: buildPrompt(input), timeout: CODEX_TIMEOUT_MS },
+        { input: buildCliPrompt(input), timeout: CODEX_TIMEOUT_MS },
       );
       const raw = readFileSync(outFile, "utf8");
-      return PlanSchema.parse(extractJson(raw));
+      return PlanSchema.parse(extractJsonObject(raw));
     } finally {
       rmSync(work, { recursive: true, force: true });
     }

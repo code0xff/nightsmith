@@ -2,24 +2,27 @@ import { Plan as PlanSchema, type Plan, type ProviderName } from "@nightsmith/sh
 import { errorMessage } from "../utils/errors.js";
 import { scanForSecrets } from "../safety/validateSecrets.js";
 import { isOpenAiConnected } from "./credentials.js";
+import { claudeProvider, isClaudeAvailable } from "./providers/claude.js";
 import { codexProvider, isCodexAvailable } from "./providers/codex.js";
 import { mockProvider } from "./providers/mock.js";
 import { openaiProvider } from "./providers/openai.js";
 import type { AiProvider, PlanInput } from "./providers/types.js";
 
-export const PROVIDER_NAMES: ProviderName[] = ["mock", "openai", "codex"];
+export const PROVIDER_NAMES: ProviderName[] = ["mock", "openai", "codex", "claude"];
 
 export type PlanLogger = (level: "info" | "warning", message: string) => void;
 
 /**
  * Providers to try, in order, resolved purely by availability:
- *   OpenAI (if a key is set) → Codex (if the CLI is installed) → mock (always).
+ *   OpenAI (if a key is set) → Codex (if the CLI is installed) → Claude Code
+ *   CLI (if installed) → mock (always).
  * No manual selection — the first available wins, and the rest are fallbacks.
  */
 async function providerChain(): Promise<AiProvider[]> {
   const chain: AiProvider[] = [];
   if (isOpenAiConnected()) chain.push(openaiProvider);
   if (await isCodexAvailable()) chain.push(codexProvider);
+  if (await isClaudeAvailable()) chain.push(claudeProvider);
   chain.push(mockProvider); // always available
   return chain;
 }

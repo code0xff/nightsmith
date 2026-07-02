@@ -10,12 +10,14 @@ import { useAppStore } from "@/state/useAppStore";
 const BADGE: Record<ProviderName, NonNullable<BadgeProps["variant"]>> = {
   openai: "success",
   codex: "default",
+  claude: "default",
   mock: "outline",
 };
 
 const LABEL: Record<ProviderName, string> = {
   openai: "OpenAI",
   codex: "Codex",
+  claude: "Claude CLI",
   mock: "Mock",
 };
 
@@ -91,6 +93,12 @@ export function AiProvider() {
                 active={ai.provider === "codex"}
               />
               <ResolutionRow
+                name="Claude CLI"
+                available={ai.claudeAvailable}
+                detail={ai.claudeAvailable ? "installed" : "not found"}
+                active={ai.provider === "claude"}
+              />
+              <ResolutionRow
                 name="Mock"
                 available
                 detail="always available"
@@ -102,7 +110,7 @@ export function AiProvider() {
               To use OpenAI, set <code>OPENAI_API_KEY</code> in the environment (e.g. your{" "}
               <code>.env</code>) and restart the server. The key is read from the environment
               only — Nightsmith never stores it. Otherwise it falls back to Codex (if installed),
-              then the offline Mock planner.
+              then Claude CLI (if installed), then the offline Mock planner.
             </p>
 
             <div className="flex justify-end">
