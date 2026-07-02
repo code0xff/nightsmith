@@ -10,6 +10,9 @@ set -euo pipefail
 
 IMAGE="${NIGHTSMITH_IMAGE:-nightsmith:local}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Publish ports to loopback only — Anvil's dev accounts are unlocked. Set
+# NIGHTSMITH_BIND_HOST=0.0.0.0 to intentionally expose the cockpit/RPC on the LAN.
+BIND="${NIGHTSMITH_BIND_HOST:-127.0.0.1}"
 
 # Build the image on first run (or when NIGHTSMITH_REBUILD=1).
 if [ "${NIGHTSMITH_REBUILD:-0}" = "1" ] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
@@ -18,8 +21,8 @@ if [ "${NIGHTSMITH_REBUILD:-0}" = "1" ] || ! docker image inspect "$IMAGE" >/dev
 fi
 
 exec docker run --rm -it \
-  -p 4040:4040 \
-  -p 8545:8545 \
+  -p "${BIND}:4040:4040" \
+  -p "${BIND}:8545:8545" \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e NIGHTSMITH_OPENAI_MODEL="${NIGHTSMITH_OPENAI_MODEL:-}" \
   -v nightsmith-data:/data \

@@ -17,9 +17,12 @@ OPENAI_API_KEY=sk-... ./nightsmith.sh
 ```
 
 Ports **4040** (cockpit) and **8545** (Anvil RPC, so a browser wallet can reach
-it) are published; sessions persist in the `nightsmith-data` volume. The
-`OPENAI_API_KEY` is optional — without it the planner uses the offline mock.
-Run any subcommand via the wrapper, e.g. `./nightsmith.sh doctor`.
+it) are published to **loopback only** — Anvil's dev accounts are unlocked, so
+they must not be reachable from the LAN. For intentional LAN access set
+`NIGHTSMITH_BIND_HOST=0.0.0.0` (compose and `nightsmith.sh` both honour it).
+Sessions persist in the `nightsmith-data` volume. The `OPENAI_API_KEY` is
+optional — without it the planner uses the offline mock. Run any subcommand via
+the wrapper, e.g. `./nightsmith.sh doctor`.
 
 ### npx — only Node required
 
@@ -29,6 +32,9 @@ npx @nightsmith/server serve                   # → http://localhost:4040
 
 Foundry isn't bundled here; if it's missing the cockpit offers a one-click,
 consented install (see below).
+
+> Maintainers: publish with **`pnpm publish`** (from `apps/server`), not
+> `npm publish` — pnpm rewrites the `workspace:*` refs to real versions.
 
 ## Install & build
 
