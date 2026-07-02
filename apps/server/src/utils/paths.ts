@@ -38,6 +38,7 @@ export function webDistDir(): string | null {
   }
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    join(here, "../web-dist"), // published npm package: dist/ -> ../web-dist
     join(here, "../../web/dist"), // bundled: apps/server/dist -> apps/web/dist
     join(here, "../../../web/dist"), // src/utils -> apps/web/dist
     join(process.cwd(), "apps/web/dist"),

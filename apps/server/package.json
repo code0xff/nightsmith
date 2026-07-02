@@ -1,11 +1,17 @@
 {
   "name": "@nightsmith/server",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "Nightsmith local server + CLI",
+  "description": "Nightsmith — AI-native local blockchain cockpit for Foundry Anvil (server + CLI)",
   "bin": {
     "nightsmith": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "web-dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "tsx watch src/dev.ts",
@@ -13,11 +19,10 @@
     "demo:extend": "tsx src/demo-extend.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/cli.js serve"
+    "start": "node dist/cli.js serve",
+    "prepack": "pnpm --filter @nightsmith/web build && tsup && node -e \"require('fs').rmSync('web-dist',{recursive:true,force:true});require('fs').cpSync('../web/dist','web-dist',{recursive:true})\""
   },
   "dependencies": {
-    "@nightsmith/contracts": "workspace:*",
-    "@nightsmith/shared": "workspace:*",
     "@fastify/static": "^8.0.3",
     "@fastify/websocket": "^11.0.1",
     "commander": "^12.1.0",
@@ -27,6 +32,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@nightsmith/contracts": "workspace:*",
+    "@nightsmith/shared": "workspace:*",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
