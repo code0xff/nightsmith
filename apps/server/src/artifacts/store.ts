@@ -12,6 +12,14 @@ import { dataDir, ensureDir } from "../utils/paths.js";
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
 
+/**
+ * Name reserved for the built-in MockERC20. It's a compiled-in default
+ * contract (packages/contracts), not an uploaded artifact — surfaced in the
+ * Contracts card as an undeletable built-in, so its name can't be uploaded,
+ * overwritten, or deleted.
+ */
+export const BUILTIN_MOCK_ERC20 = "MockERC20";
+
 function artifactsDir(): string {
   return join(dataDir(), "artifacts");
 }
@@ -29,6 +37,9 @@ function pathFor(name: string): string {
 export function saveArtifact(input: unknown): UploadedArtifact {
   const artifact = UploadedArtifact.parse(input);
   assertName(artifact.name);
+  if (artifact.name === BUILTIN_MOCK_ERC20) {
+    throw new AppError(`"${BUILTIN_MOCK_ERC20}" is a reserved built-in contract name`, 400);
+  }
   ensureDir(artifactsDir());
   writeFileSync(pathFor(artifact.name), JSON.stringify(artifact, null, 2) + "\n");
   return artifact;
@@ -41,7 +52,11 @@ export function listArtifacts(): UploadedArtifact[] {
   for (const file of readdirSync(dir)) {
     if (!file.endsWith(".json")) continue;
     try {
-      out.push(UploadedArtifact.parse(JSON.parse(readFileSync(join(dir, file), "utf8"))));
+      const parsed = UploadedArtifact.parse(JSON.parse(readFileSync(join(dir, file), "utf8")));
+      // Never surface a stray file named like the built-in — it must not
+      // shadow the compiled-in MockERC20 for the planner, hydration, or UI.
+      if (parsed.name === BUILTIN_MOCK_ERC20) continue;
+      out.push(parsed);
     } catch {
       // Skip corrupt entries.
     }
@@ -50,6 +65,9 @@ export function listArtifacts(): UploadedArtifact[] {
 }
 
 export function getArtifact(name: string): UploadedArtifact | null {
+  // The built-in is compiled in (kind:"MockERC20"), never an uploaded artifact;
+  // refuse to resolve a stale/stray on-disk file by that name.
+  if (name === BUILTIN_MOCK_ERC20) return null;
   const path = pathFor(name);
   if (!existsSync(path)) return null;
   try {
@@ -60,6 +78,9 @@ export function getArtifact(name: string): UploadedArtifact | null {
 }
 
 export function deleteArtifact(name: string): void {
+  if (name === BUILTIN_MOCK_ERC20) {
+    throw new AppError(`"${BUILTIN_MOCK_ERC20}" is a built-in contract and cannot be deleted`, 400);
+  }
   const path = pathFor(name);
   if (existsSync(path)) rmSync(path);
 }

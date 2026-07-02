@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileCode2, FolderOpen, Trash2, Upload } from "lucide-react";
+import { FileCode2, FolderOpen, Lock, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ArtifactSummary } from "@nightsmith/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,33 +116,34 @@ export function ContractsPanel() {
           </Button>
         </CardHeader>
         <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
-          {artifacts.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No uploaded contracts. Upload an artifact (ABI + bytecode), then deploy it from a
-              prompt: e.g. “Deploy MyVault with owner Alice and cap 1000000”.
-            </p>
-          ) : (
-            artifacts.map((a) => (
-              <div
-                key={a.name}
-                className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{a.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {a.functions.length} function{a.functions.length === 1 ? "" : "s"}
-                  </div>
+          {artifacts.map((a) => (
+            <div
+              key={a.name}
+              className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{a.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {a.builtin ? "built-in · " : ""}
+                  {a.functions.length} function{a.functions.length === 1 ? "" : "s"}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${a.name}`}
-                  onClick={() => remove(a.name)}
-                >
-                  <Trash2 />
-                </Button>
               </div>
-            ))
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={a.builtin ? `${a.name} is a built-in contract` : `Remove ${a.name}`}
+                disabled={a.builtin}
+                onClick={() => remove(a.name)}
+              >
+                {a.builtin ? <Lock /> : <Trash2 />}
+              </Button>
+            </div>
+          ))}
+          {artifacts.every((a) => a.builtin) && (
+            <p className="text-xs text-muted-foreground">
+              Upload an artifact (ABI + bytecode), then deploy it from a prompt: e.g. “Deploy
+              MyVault with owner Alice and cap 1000000”.
+            </p>
           )}
         </CardContent>
       </Card>

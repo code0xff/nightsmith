@@ -166,6 +166,8 @@ export type UploadedArtifact = z.infer<typeof UploadedArtifact>;
 export const ArtifactSummary = z.object({
   name: z.string(),
   functions: z.array(z.string()).default([]),
+  /** Built-in default contract (e.g. MockERC20) — always present, undeletable. */
+  builtin: z.boolean().default(false),
 });
 export type ArtifactSummary = z.infer<typeof ArtifactSummary>;
 
