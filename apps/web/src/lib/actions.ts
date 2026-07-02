@@ -21,9 +21,11 @@ export async function submitPrompt(prompt: string): Promise<void> {
   try {
     // Pass the live session so the planner sees the previous manifest and can
     // plan a modify/extend rather than a fresh world.
-    const { plan, planId } = await api.prompt(prompt, store.sessionId ?? undefined);
-    store.setPlan(plan, planId);
-    toast.success("Plan ready for review", { description: plan.summary });
+    const { plan, planId, warnings } = await api.prompt(prompt, store.sessionId ?? undefined);
+    store.setPlan(plan, planId, warnings);
+    toast.success("Plan ready for review", {
+      description: warnings.length ? `${plan.summary} — ${warnings.length} warning(s)` : plan.summary,
+    });
   } catch (err) {
     toast.error("Planning failed", { description: describeError(err) });
   } finally {

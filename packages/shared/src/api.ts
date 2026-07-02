@@ -20,6 +20,11 @@ export type PromptRequest = z.infer<typeof PromptRequest>;
 export const PromptResponse = z.object({
   planId: z.string(),
   plan: Plan,
+  /**
+   * Server-computed, non-blocking pre-execution warnings (ABI-conformance
+   * checks on the plan's manifest). Advisory only — the user may still run.
+   */
+  warnings: z.array(z.string()).default([]),
 });
 export type PromptResponse = z.infer<typeof PromptResponse>;
 

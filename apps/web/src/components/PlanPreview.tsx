@@ -1,4 +1,4 @@
-import { CheckCircle2, ListChecks, Play, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ListChecks, Play, ShieldCheck, X } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ function Section({
 
 export function PlanPreview() {
   const plan = useAppStore((s) => s.plan);
+  const warnings = useAppStore((s) => s.planWarnings);
   const busy = useAppStore((s) => s.busy);
 
   const accent = plan?.uiPreview.accent;
@@ -72,6 +73,23 @@ export function PlanPreview() {
             <p className="rounded-md border border-warning/30 bg-warning/5 p-2 text-sm">
               {plan.explanation}
             </p>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="space-y-1 rounded-md border border-warning/40 bg-warning/5 p-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-warning">
+                <AlertTriangle className="size-3" />
+                Warnings ({warnings.length}) — the plan may fail on run
+              </div>
+              <ul className="space-y-0.5 pl-1 text-sm">
+                {warnings.map((w, i) => (
+                  <li key={i} className="flex gap-1.5">
+                    <span className="select-none text-warning">·</span>
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <Section icon={<ListChecks className="size-3" />} title="Steps" items={plan.steps} />

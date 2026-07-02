@@ -71,17 +71,22 @@ export function summarizeArtifacts(
   artifacts: import("@nightsmith/shared").UploadedArtifact[],
 ): string {
   if (artifacts.length === 0) return "";
-  const sig = (i: { name?: string; inputs?: { type?: string }[] }) =>
-    `${i.name}(${(i.inputs ?? []).map((p) => p.type).join(",")})`;
+  // Include parameter NAMES (not just types) so the planner puts each value in
+  // the right slot — e.g. it can tell `initialSupply` from `initialOwner`
+  // instead of guessing positionally against a bare `(uint256,string,...)`.
+  const params = (inputs?: { type?: string; name?: string }[]) =>
+    (inputs ?? []).map((p) => `${p.type}${p.name ? ` ${p.name}` : ""}`).join(", ");
+  const sig = (i: { name?: string; inputs?: { type?: string; name?: string }[] }) =>
+    `${i.name}(${params(i.inputs)})`;
   const lines = artifacts.map((a) => {
     const items = a.abi as Array<{
       type?: string;
       name?: string;
-      inputs?: { type?: string }[];
+      inputs?: { type?: string; name?: string }[];
     }>;
     const ctor = items.find((i) => i.type === "constructor");
     const fns = items.filter((i) => i.type === "function");
-    return `- ${a.name}: constructor(${(ctor?.inputs ?? []).map((p) => p.type).join(",")}); functions: ${fns.map(sig).join(", ") || "(none)"}`;
+    return `- ${a.name}: constructor(${params(ctor?.inputs)}); functions: ${fns.map(sig).join(", ") || "(none)"}`;
   });
   return `Available uploaded contracts (reference by name):\n${lines.join("\n")}`;
 }

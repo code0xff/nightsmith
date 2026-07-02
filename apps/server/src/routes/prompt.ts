@@ -8,6 +8,7 @@ import { getSession } from "../sessions/store.js";
 import { listArtifacts } from "../artifacts/store.js";
 import { hydrateArtifacts } from "../artifacts/hydrate.js";
 import { assertPromptHasNoSecrets } from "../safety/validateSecrets.js";
+import { preflightManifest } from "../safety/preflightManifest.js";
 import type { Runtime } from "../runtime/runtime.js";
 
 let planSeq = 0;
@@ -39,9 +40,13 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
       ? { ...plan, manifest: hydrateArtifacts(plan.manifest) }
       : plan;
 
+    // ABI-conformance preflight (advisory — surfaced in the preview, non-blocking).
+    const warnings = finalPlan.manifest ? preflightManifest(finalPlan.manifest) : [];
+    for (const w of warnings) runtime.log("warning", w, "planner");
+
     runtime.setExecution("awaiting-confirmation");
     runtime.log("info", `Plan generated via ${provider}: ${finalPlan.summary}`, "planner");
 
-    return { planId: `plan-${++planSeq}`, plan: finalPlan };
+    return { planId: `plan-${++planSeq}`, plan: finalPlan, warnings };
   });
 }
