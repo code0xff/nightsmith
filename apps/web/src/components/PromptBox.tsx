@@ -51,7 +51,8 @@ export function PromptBox() {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           rows={4}
-          className="resize-y font-sans"
+          disabled={busy}
+          className="resize-y font-sans disabled:cursor-not-allowed disabled:opacity-60"
         />
         <div className="flex flex-wrap gap-1.5">
           {EXAMPLES.map((ex) => (
@@ -59,7 +60,8 @@ export function PromptBox() {
               key={ex}
               type="button"
               onClick={() => setValue(ex)}
-              className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              disabled={busy}
+              className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               {ex}
             </button>
