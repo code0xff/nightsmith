@@ -8,6 +8,7 @@ import {
   parseControl,
   parseToken,
   parseTransfer,
+  RESET_RE,
 } from "../parse.js";
 import {
   buildManifest,
@@ -283,7 +284,6 @@ function controlPlan(prompt: string, running: boolean): Plan {
   const control = parseControl(prompt) ?? { kind: "stop" as const };
   const labels: Record<string, string> = {
     stop: "Stop the localnet",
-    reset: "Reset the localnet to a clean state",
     snapshot: "Take an EVM snapshot",
     revert: "Revert to the last snapshot",
     resume: "Resume the previous session",
@@ -306,12 +306,30 @@ function controlPlan(prompt: string, running: boolean): Plan {
     uiPreview: {
       title: summary,
       description: `Control action: ${control.kind}`,
-      accent: control.kind === "stop" || control.kind === "reset" ? "destructive" : "default",
+      accent: control.kind === "stop" ? "destructive" : "default",
     },
   };
 }
 
 function explainPlan(prompt: string): Plan {
+  // "reset" was removed as a control; answer a bare reset request with guidance
+  // instead of silently building/rebuilding a world.
+  if (RESET_RE.test(prompt)) {
+    return {
+      intent: "explain",
+      summary: "Reset was removed — nothing is executed.",
+      assumptions: [],
+      steps: [],
+      expectedStateChanges: [],
+      assertions: [],
+      safetyNotes: ["Read-only — no state is changed."],
+      manifest: null,
+      control: null,
+      explanation:
+        "There's no longer a Reset action. To clear the running world use Stop, to rebuild the current world use Replay, or enter a new prompt to start a fresh world.",
+      uiPreview: { title: "Reset unavailable", description: prompt.slice(0, 120), accent: "warning" },
+    };
+  }
   const explanation =
     "Inspection plan (no state changes). Common local revert causes: (1) ERC20 transfer exceeding the sender's balance, (2) missing or insufficient allowance for transferFrom, (3) calling a function on a contract that hasn't been deployed yet, or (4) an assertion comparing against the wrong decimals. Review the most recent failed transaction in the Transactions panel and the assertion's expected vs. actual values in the log console.";
   return {

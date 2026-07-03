@@ -10,7 +10,6 @@ import { useAppStore } from "@/state/useAppStore";
 const EXAMPLES = [
   "Create a local USDC payment test world with Alice and Bob",
   "Replay the last scenario",
-  "Reset the localnet and run the payment flow again",
   "Explain why the last transaction reverted",
 ];
 

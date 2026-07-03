@@ -20,7 +20,7 @@ export const PlanIntent = z.enum([
   "extendWorld",
   /** Re-run an existing scenario. */
   "runScenario",
-  /** Control the localnet lifecycle (stop/reset/snapshot/revert/replay/resume). */
+  /** Control the localnet lifecycle (stop/snapshot/revert/replay/resume). */
   "control",
   /** Explain a failure or inspect state — no mutation. */
   "explain",
@@ -31,7 +31,6 @@ export const ControlAction = z.object({
   kind: z.enum([
     "start",
     "stop",
-    "reset",
     "snapshot",
     "revert",
     "replay",

@@ -18,7 +18,7 @@ Rules:
 - Always include expected state changes.
 - Always include assertions when the request implies a test.
 - Always make the plan replayable.
-- If the user asks to stop, pause, resume, reset, replay, or inspect the localnet, produce a control action plan.
+- If the user asks to stop, pause, resume, replay, or inspect the localnet, produce a control action plan.
 - If a world is already running and the user asks to ADD to it (a follow-up action like a new transfer, mint, or call) rather than change earlier setup, use intent "extendWorld": return the FULL cumulative manifest = the previous manifest with the new actions appended at the END. Preserve the previous network, accounts, contracts, and every prior action VERBATIM and in order — never reorder, edit, or remove them, and do not redeploy existing contracts. Only add new accounts/contracts if the new actions need them. Use "modifyWorld" instead when the user changes earlier setup (e.g. a different initial balance), since that requires a full rebuild.
 - If the user asks why something failed, produce an inspection/explanation plan instead of a mutation plan.
 - Output valid JSON only, matching the Plan schema (intent, summary, assumptions, steps, expectedStateChanges, assertions, safetyNotes, manifest|null, control|null, explanation|null, uiPreview).`;
@@ -52,7 +52,7 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
     ],
     "assertions": [ { "type": "tokenBalance", "contractId": string, "account": string, "expected": string } ]
   },
-  "control": null | { "kind": "start"|"stop"|"reset"|"snapshot"|"revert"|"replay"|"resume"|"export" },
+  "control": null | { "kind": "start"|"stop"|"snapshot"|"revert"|"replay"|"resume"|"export" },
   "explanation": null | string,
   "uiPreview": { "title": string, "description": string, "accent": "default"|"warning"|"destructive" }
 }

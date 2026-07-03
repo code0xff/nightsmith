@@ -1,12 +1,12 @@
-import { Camera, Download, Play, Power, RotateCcw, Square, Undo2 } from "lucide-react";
+import { Camera, Download, Play, Power, Square, Undo2 } from "lucide-react";
 import { CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { exportLatest, localnetAction, replayLatest } from "@/lib/actions";
 import { useAppStore } from "@/state/useAppStore";
 
 /**
- * Direct localnet controls — a tidy 2×3 grid grouped by row: lifecycle
- * (Start/Stop + Reset), snapshot (Snapshot/Revert), session (Replay/Export).
+ * Direct localnet controls: a full-width lifecycle toggle (Start/Stop) over a
+ * 2-column grid of snapshot (Snapshot/Revert) and session (Replay/Export).
  */
 export function ControlPanel() {
   const running = useAppStore((s) => s.world.localnet.status === "running");
@@ -17,7 +17,7 @@ export function ControlPanel() {
       {running ? (
         <Button
           variant="destructive"
-          className="w-full"
+          className="col-span-2 w-full"
           onClick={() => localnetAction("stop")}
           disabled={busy}
         >
@@ -25,20 +25,15 @@ export function ControlPanel() {
           Stop
         </Button>
       ) : (
-        <Button className="w-full" onClick={() => localnetAction("start")} disabled={busy}>
+        <Button
+          className="col-span-2 w-full"
+          onClick={() => localnetAction("start")}
+          disabled={busy}
+        >
           <Power />
           Start
         </Button>
       )}
-      <Button
-        variant="destructive"
-        className="w-full"
-        onClick={() => localnetAction("reset")}
-        disabled={busy || !running}
-      >
-        <RotateCcw />
-        Reset
-      </Button>
 
       <Button
         variant="outline"

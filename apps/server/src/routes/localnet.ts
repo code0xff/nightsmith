@@ -35,10 +35,6 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
         case "stop":
           await runtime.stopLocalnet();
           break;
-        case "reset":
-          if (runtime.isRunning()) await runtime.stopLocalnet();
-          await runtime.startLocalnet(defaultNetwork());
-          break;
         case "snapshot":
           snapshotId = await runtime.snapshot();
           break;

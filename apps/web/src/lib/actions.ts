@@ -4,7 +4,7 @@ import { ApiRequestError, api } from "./api";
 import { useAppStore } from "@/state/useAppStore";
 
 /** Control/localnet actions that invalidate the live-session cursor. */
-const INVALIDATING_CONTROLS = new Set(["stop", "reset", "revert"]);
+const INVALIDATING_CONTROLS = new Set(["stop", "revert"]);
 
 function describeError(err: unknown): string {
   if (err instanceof ApiRequestError) {
@@ -69,7 +69,7 @@ export async function runCurrentPlan(): Promise<void> {
       store.planPrompt ?? undefined,
     );
     // Track the live session so the next prompt/extend targets this world. A
-    // control action that tears down or rewinds the world (stop/reset/revert)
+    // control action that tears down or rewinds the world (stop/revert)
     // returns no session and invalidates the live cursor — clear it so the next
     // extend doesn't target a dead world.
     if (res.sessionId) store.setSessionId(res.sessionId);
@@ -108,7 +108,6 @@ export function cancelPlan(): void {
 const ACTION_LABELS: Record<LocalnetAction, string> = {
   start: "Localnet started",
   stop: "Localnet stopped",
-  reset: "Localnet reset",
   snapshot: "Snapshot taken",
   revert: "Reverted to snapshot",
 };
@@ -120,7 +119,7 @@ export async function localnetAction(
 ): Promise<void> {
   try {
     const res = await api.localnet(action, snapshotId);
-    // stop/reset/revert leave no live world matching the tracked session.
+    // stop/revert leave no live world matching the tracked session.
     if (INVALIDATING_CONTROLS.has(action)) useAppStore.getState().setSessionId(null);
     toast.success(ACTION_LABELS[action], {
       description: action === "snapshot" ? res.snapshotId : undefined,

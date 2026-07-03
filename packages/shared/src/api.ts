@@ -69,7 +69,7 @@ export type ExecutionReport = z.infer<typeof ExecutionReport>;
 
 /**
  * Result of confirming a plan. Manifest-running intents return a session and
- * report; control intents (stop/reset/snapshot/…) return only the new state.
+ * report; control intents (stop/snapshot/…) return only the new state.
  */
 export const ExecuteResponse = z.object({
   sessionId: z.string().nullable().default(null),
@@ -82,7 +82,6 @@ export type ExecuteResponse = z.infer<typeof ExecuteResponse>;
 export const LocalnetAction = z.enum([
   "start",
   "stop",
-  "reset",
   "snapshot",
   "revert",
 ]);

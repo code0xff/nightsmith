@@ -104,7 +104,10 @@ export function parseBalanceChange(
   prompt: string,
 ): { ref: string; amount: string } | null {
   const english = new RegExp(
-    `(?:change|set|make|update)\\s+${REF}(?:'s)?\\s+(?:initial\\s+)?balance\\s+(?:to\\s+)?([\\d,]+(?:\\.\\d+)?)`,
+    // "reset X's balance to N" is an explicit modify verb here (don't rely on
+    // "set" ⊂ "reset"); the reset guard in detectIntent only fires when no
+    // such balance target is present.
+    `\\b(?:change|set|reset|make|update)\\s+${REF}(?:'s)?\\s+(?:initial\\s+)?balance\\s+(?:to\\s+)?([\\d,]+(?:\\.\\d+)?)`,
     "i",
   ).exec(prompt);
   if (english) return { ref: canon(english[1]!), amount: num(english[2]!) };
@@ -122,7 +125,6 @@ const CONTROL_KEYWORDS: Array<{ re: RegExp; kind: ControlAction["kind"] }> = [
   { re: /\brevert\b|되돌려|복원/i, kind: "revert" },
   { re: /\bexport\b|내보내/i, kind: "export" },
   { re: /\bresume\b|이어서|재개/i, kind: "resume" },
-  { re: /\breset\b|초기화/i, kind: "reset" },
 ];
 
 export function parseControl(prompt: string): ControlAction | null {
@@ -134,6 +136,8 @@ export function parseControl(prompt: string): ControlAction | null {
 
 const REPLAY_RE = /\breplay\b|다시\s*실행|run\b.*\bagain\b|again\b/i;
 const EXPLAIN_RE = /\bexplain\b|\bwhy\b|왜|이유|설명/i;
+/** Leftover "reset the localnet" phrasing — reset was removed as a control. */
+export const RESET_RE = /\breset\b|초기화/i;
 const MODIFY_RE = /\bchange\b|\bset\b|\bmodify\b|\bupdate\b|\binstead\b|바꾸|수정|변경/i;
 // Additive follow-up cues. Deliberately excludes "이어서"/"계속"/"resume", which
 // are control (resume) keywords, to avoid hijacking that intent.
@@ -153,9 +157,21 @@ export function detectIntent(
 ): PlanIntent {
   if (EXPLAIN_RE.test(prompt)) return "explain";
   const hasChange = MODIFY_RE.test(prompt) || parseBalanceChange(prompt) != null;
+  // "reset the localnet" / "초기화" no longer maps to a control (reset was
+  // removed). Route a bare reset request to a non-mutating explanation rather
+  // than silently falling through to the create-world default below. Guard
+  // against "reset Bob's balance to X", which is a modify.
+  if (
+    RESET_RE.test(prompt) &&
+    !hasChange &&
+    parseTransfer(prompt) == null &&
+    parseBalances(prompt).length === 0
+  ) {
+    return "explain";
+  }
   if (hasPrevious && hasChange) return "modifyWorld";
   // Append onto the already-running world when the prompt adds a new action and
-  // isn't a modify, a lifecycle control (stop/reset/…), or an explicit "create
+  // isn't a modify, a lifecycle control (stop/snapshot/…), or an explicit "create
   // a new world" request.
   if (
     hasPrevious &&

@@ -149,10 +149,6 @@ export async function runPlan(
         case "start":
           await runtime.startLocalnet(defaultNetwork());
           break;
-        case "reset":
-          if (runtime.isRunning()) await runtime.stopLocalnet();
-          await runtime.startLocalnet(defaultNetwork());
-          break;
         case "snapshot":
           await runtime.snapshot();
           break;
