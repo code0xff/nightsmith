@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 /** Root data directory for sessions, manifests, logs, and reports. */
 export function dataDir(): string {
-  return process.env.NIGHTSMITH_DATA_DIR ?? join(homedir(), ".nightsmith");
+  // Treat an empty/whitespace NIGHTSMITH_DATA_DIR as unset — otherwise paths
+  // would resolve CWD-relative (surprising for a destructive `clean`).
+  const override = process.env.NIGHTSMITH_DATA_DIR?.trim();
+  return override ? override : join(homedir(), ".nightsmith");
 }
 
 export function sessionsDir(): string {

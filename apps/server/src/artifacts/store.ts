@@ -84,3 +84,16 @@ export function deleteArtifact(name: string): void {
   const path = pathFor(name);
   if (existsSync(path)) rmSync(path);
 }
+
+/** Raw count of stored artifact files (includes corrupt/unparseable ones). */
+export function countStoredArtifacts(): number {
+  const dir = artifactsDir();
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir).filter((f) => f.endsWith(".json")).length;
+}
+
+/** Delete every uploaded artifact (used by `nightsmith clean`). The built-in
+ *  MockERC20 is synthetic (never on disk), so it's unaffected. */
+export function clearAllArtifacts(): void {
+  rmSync(artifactsDir(), { recursive: true, force: true });
+}

@@ -126,9 +126,9 @@ In dev, run `pnpm dev` and `pnpm dev:web` in two terminals and open the Vite URL
 
 ## CLI
 
-The subcommands below (`serve`, `stop`, `doctor`, `export`, `replay`) all live on
-one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it isn't
-on `PATH` by default — run it via `pnpm --filter @nightsmith/server exec node
+The subcommands below (`serve`, `stop`, `doctor`, `export`, `replay`, `clean`) all
+live on one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it
+isn't on `PATH` by default — run it via `pnpm --filter @nightsmith/server exec node
 dist/cli.js <command>`, or `./nightsmith.sh <command>` (Docker) / `./run-local.sh`
 for the zero-setup wrappers. A global install (`npm i -g @nightsmith/server`,
 once published) would put the bare `nightsmith` command below on `PATH`.
@@ -139,10 +139,17 @@ nightsmith stop               # stop the running localnet (talks to the server)
 nightsmith doctor             # check toolchain + ports
 nightsmith export <sessionId> [-o file.json]   # export a session's manifest
 nightsmith replay <sessionId> # headlessly replay a saved session
+nightsmith clean [-y]         # delete all saved sessions + uploaded contracts
 ```
 
 Sessions are stored under `~/.nightsmith/sessions/<id>/` (manifest, report,
 logs). Override with `NIGHTSMITH_DATA_DIR`.
+
+`clean` wipes everything Nightsmith persists — saved sessions and uploaded
+contracts — for a fresh slate; it prompts for confirmation (skip with `-y`/
+`--yes`) and, if a server is reachable on the configured `NIGHTSMITH_HOST`/
+`NIGHTSMITH_PORT`, stops its localnet first (best-effort). The built-in
+**MockERC20** is compiled in (not stored on disk), so it always remains.
 
 ## AI provider
 

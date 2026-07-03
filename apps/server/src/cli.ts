@@ -3,11 +3,15 @@ import { Command } from "commander";
 import { execa } from "execa";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:net";
+import { resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 import { DEFAULT_ANVIL_PORT, SERVER_HOST, SERVER_PORT } from "./config.js";
 import { startServer } from "./server.js";
 import { Runtime } from "./runtime/runtime.js";
 import { runSavedManifest } from "./executor/runPlan.js";
-import { getSession } from "./sessions/store.js";
+import { clearAllSessions, countStoredSessions, getSession } from "./sessions/store.js";
+import { clearAllArtifacts, countStoredArtifacts } from "./artifacts/store.js";
+import { dataDir } from "./utils/paths.js";
 import { errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
@@ -114,6 +118,77 @@ program
     }
     logger.info("doctor: all required tools present");
   });
+
+program
+  .command("clean")
+  .description("Delete all saved sessions and uploaded contracts (fresh state)")
+  .option("-y, --yes", "skip the confirmation prompt")
+  .action(async (opts: { yes?: boolean }) => {
+    // Count RAW directory contents, not parseable entries — a corrupt/partial
+    // session dir or artifact file must still count as "not clean" and get
+    // wiped, not slip past the short-circuit below.
+    const sessions = countStoredSessions();
+    const artifacts = countStoredArtifacts();
+    if (sessions === 0 && artifacts === 0) {
+      logger.info("Already clean — nothing to remove.");
+      return;
+    }
+
+    const target = resolve(dataDir());
+    if (!opts.yes) {
+      if (!process.stdin.isTTY) {
+        logger.error("Refusing to clean without confirmation. Re-run with --yes.");
+        process.exit(1);
+      }
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        const answer = await rl.question(
+          `Delete ${sessions} session(s) and ${artifacts} uploaded contract(s) from ${target}? [y/N] `,
+        );
+        if (!/^y(es)?$/i.test(answer.trim())) {
+          logger.info("Aborted — nothing removed.");
+          return;
+        }
+      } finally {
+        rl.close();
+      }
+    }
+
+    // Stop a running localnet first so no orphaned Anvil is left behind.
+    const serverUp = await stopLocalnetIfRunning();
+
+    clearAllSessions();
+    clearAllArtifacts();
+    logger.info(
+      `Removed ${sessions} session(s) and ${artifacts} uploaded contract(s) from ${target}. Built-in MockERC20 remains.`,
+    );
+    if (serverUp) {
+      logger.info(
+        `A server is running on ${SERVER_HOST}:${SERVER_PORT} — restart it for a fully fresh in-memory runtime.`,
+      );
+    }
+  });
+
+/** Best-effort: if the server is up, stop its localnet. Returns whether the server responded. */
+async function stopLocalnetIfRunning(): Promise<boolean> {
+  const base = `http://${SERVER_HOST}:${SERVER_PORT}`;
+  try {
+    const health = await fetch(`${base}/api/health`);
+    if (!health.ok) return false;
+  } catch {
+    return false; // no server running — nothing to stop
+  }
+  try {
+    await fetch(`${base}/api/localnet`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "stop" }),
+    });
+  } catch {
+    // Non-fatal — proceed with the file wipe regardless.
+  }
+  return true;
+}
 
 async function toolVersion(tool: string): Promise<string | null> {
   try {

@@ -119,5 +119,17 @@ export function deleteSession(id: string): void {
   rmSync(dir, { recursive: true, force: true });
 }
 
+/** Raw count of stored session directories (includes corrupt/partial ones). */
+export function countStoredSessions(): number {
+  const root = sessionsDir();
+  if (!existsSync(root)) return 0;
+  return readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory()).length;
+}
+
+/** Delete every saved session (used by `nightsmith clean`). */
+export function clearAllSessions(): void {
+  rmSync(sessionsDir(), { recursive: true, force: true });
+}
+
 // Ensure the sessions root exists eagerly so first writes don't race.
 mkdirSync(sessionsDir(), { recursive: true });
