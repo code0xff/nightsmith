@@ -34,7 +34,7 @@ export function ControlPanel() {
         variant="destructive"
         className="w-full"
         onClick={() => localnetAction("reset")}
-        disabled={busy}
+        disabled={busy || !running}
       >
         <RotateCcw />
         Reset
@@ -68,7 +68,7 @@ export function ControlPanel() {
         <Play />
         Replay
       </Button>
-      <Button variant="ghost" className="w-full" onClick={exportLatest}>
+      <Button variant="ghost" className="w-full" onClick={exportLatest} disabled={busy}>
         <Download />
         Export
       </Button>
