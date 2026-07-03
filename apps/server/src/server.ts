@@ -10,6 +10,7 @@ import { registerPromptRoutes } from "./routes/prompt.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
 import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerExportRoutes } from "./routes/export.js";
+import { registerImportRoutes } from "./routes/import.js";
 import { registerAiRoutes } from "./routes/ai.js";
 import { registerAnvilRoutes } from "./routes/anvil.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
@@ -78,6 +79,7 @@ export async function buildServer(): Promise<NightsmithServer> {
   registerExecuteRoutes(app, runtime);
   registerSessionRoutes(app, runtime);
   registerExportRoutes(app);
+  registerImportRoutes(app, runtime);
   registerAiRoutes(app);
   registerAnvilRoutes(app, runtime);
   registerArtifactRoutes(app);

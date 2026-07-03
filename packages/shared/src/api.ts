@@ -96,6 +96,14 @@ export const LocalnetActionResponse = z.object({
 });
 export type LocalnetActionResponse = z.infer<typeof LocalnetActionResponse>;
 
+// POST /api/import — load a raw (exported) manifest and replay it as a new
+// session. The manifest is re-validated server-side (shape + network safety)
+// before it runs; the response is the same shape as a normal execution.
+export const ImportManifestRequest = z.object({
+  manifest: WorldManifest,
+});
+export type ImportManifestRequest = z.infer<typeof ImportManifestRequest>;
+
 // Sessions
 export const SessionSummary = z.object({
   id: z.string(),

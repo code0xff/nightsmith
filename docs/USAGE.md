@@ -124,8 +124,8 @@ In dev, run `pnpm dev` and `pnpm dev:web` in two terminals and open the Vite URL
 
 ## CLI
 
-The subcommands below (`serve`, `stop`, `doctor`, `export`, `replay`, `clean`) all
-live on one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it
+The subcommands below (`serve`, `stop`, `doctor`, `export`, `import`, `replay`,
+`clean`) all live on one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it
 isn't on `PATH` by default — run it via `pnpm --filter @nightsmith/server exec node
 dist/cli.js <command>`, or `./nightsmith.sh <command>` (Docker) / `./run-local.sh`
 for the zero-setup wrappers. A global install (`npm i -g @nightsmith/server`,
@@ -136,12 +136,20 @@ nightsmith serve              # start server + web cockpit
 nightsmith stop               # stop the running localnet (talks to the server)
 nightsmith doctor             # check toolchain + ports
 nightsmith export <sessionId> [-o file.json]   # export a session's manifest
+nightsmith import <file.json> # import a manifest file and replay it as a new session
 nightsmith replay <sessionId> # headlessly replay a saved session
 nightsmith clean [-y]         # delete all saved sessions + uploaded contracts
 ```
 
 Sessions are stored under `~/.nightsmith/sessions/<id>/` (manifest, report,
 logs). Override with `NIGHTSMITH_DATA_DIR`.
+
+`export` and `import` are inverses: `export` writes a session's manifest to a
+portable JSON file, and `import` loads that file back — re-validating it (shape
++ network safety) and replaying it as a **new** session. This is the way to move
+a world between machines or restore one after `clean`, since `replay` only reads
+sessions already in the local store. In the cockpit, the Sessions panel's
+**Import** button (⬆) does the same from the browser.
 
 `clean` wipes everything Nightsmith persists — saved sessions and uploaded
 contracts — for a fresh slate; it prompts for confirmation (skip with `-y`/

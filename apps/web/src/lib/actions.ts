@@ -165,6 +165,33 @@ export async function replayLatest(): Promise<void> {
   await replaySession(sessions[0]!.id);
 }
 
+/** Import an exported manifest JSON file, replaying it as a new session. */
+export async function importManifestFile(file: File): Promise<void> {
+  const store = useAppStore.getState();
+  if (store.busy) return;
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(await file.text());
+  } catch {
+    toast.error("Import failed", { description: "Not a valid JSON file" });
+    return;
+  }
+  store.setBusy(true);
+  toast("Importing manifest", { description: file.name });
+  try {
+    // The server re-validates the manifest (shape + network safety) before it
+    // runs; a bad shape/network comes back as a 400 with details.
+    const res = await api.importManifest(manifest as never);
+    if (res.sessionId) store.setSessionId(res.sessionId);
+    if (res.report?.status === "completed") toast.success("Manifest imported");
+    else toast.error("Import finished with failures", { description: res.report?.error });
+  } catch (err) {
+    toast.error("Import failed", { description: describeError(err) });
+  } finally {
+    store.setBusy(false);
+  }
+}
+
 /** Export the most recent session (used by the control panel's Export button). */
 export async function exportLatest(): Promise<void> {
   const { sessions } = await api.sessions();

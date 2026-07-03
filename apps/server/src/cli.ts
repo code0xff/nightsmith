@@ -1,7 +1,7 @@
 import "./loadEnv.js"; // must be first: load .env before config/env reads
 import { Command } from "commander";
 import { execa } from "execa";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -9,6 +9,7 @@ import { DEFAULT_ANVIL_PORT, SERVER_HOST, SERVER_PORT } from "./config.js";
 import { startServer } from "./server.js";
 import { Runtime } from "./runtime/runtime.js";
 import { runSavedManifest } from "./executor/runPlan.js";
+import { WorldManifest } from "@nightsmith/shared";
 import { clearAllSessions, countStoredSessions, getSession } from "./sessions/store.js";
 import { clearAllArtifacts, countStoredArtifacts } from "./artifacts/store.js";
 import { dataDir } from "./utils/paths.js";
@@ -80,6 +81,34 @@ program
     try {
       const res = await runSavedManifest(runtime, manifest);
       logger.info(`Replay ${res.report?.status ?? "finished"}`);
+      process.exitCode = res.report?.status === "completed" ? 0 : 1;
+    } finally {
+      await runtime.stopLocalnet().catch(() => {});
+    }
+  });
+
+program
+  .command("import")
+  .description("Import a manifest JSON file and replay it (saves a new session)")
+  .argument("<file>", "path to an exported manifest JSON file")
+  .action(async (file: string) => {
+    let manifest;
+    try {
+      manifest = WorldManifest.parse(JSON.parse(readFileSync(resolve(file), "utf8")));
+    } catch (err) {
+      logger.error(`Invalid manifest file: ${errorMessage(err)}`);
+      process.exitCode = 1;
+      return;
+    }
+    const runtime = new Runtime();
+    runtime.bus.subscribe((e) => {
+      if (e.type === "log" && e.entry.level !== "debug") {
+        logger.info(`[${e.entry.level}] ${e.entry.message}`);
+      }
+    });
+    try {
+      const res = await runSavedManifest(runtime, manifest);
+      logger.info(`Imported session ${res.sessionId} — ${res.report?.status ?? "finished"}`);
       process.exitCode = res.report?.status === "completed" ? 0 : 1;
     } finally {
       await runtime.stopLocalnet().catch(() => {});

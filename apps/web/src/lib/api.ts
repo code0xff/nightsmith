@@ -11,6 +11,7 @@ import {
   type LocalnetAction,
   type Plan,
   type UploadedArtifact,
+  type WorldManifest,
 } from "@nightsmith/shared";
 
 export class ApiRequestError extends Error {
@@ -72,6 +73,12 @@ export const api = {
     request("/api/localnet", LocalnetActionResponse, {
       method: "POST",
       body: JSON.stringify({ action }),
+    }),
+
+  importManifest: (manifest: WorldManifest) =>
+    request("/api/import", ExecuteResponse, {
+      method: "POST",
+      body: JSON.stringify({ manifest }),
     }),
 
   sessions: () => request("/api/sessions", SessionListResponse),
