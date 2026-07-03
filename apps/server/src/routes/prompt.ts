@@ -48,6 +48,11 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
         abort.signal,
       );
 
+      // If the client cancelled right as generation finished, don't publish the
+      // plan or flip to awaiting-confirmation — take the cancel path below.
+      // (Everything after this is synchronous, so no further abort can interleave.)
+      abort.signal.throwIfAborted();
+
       // Fill abi+bytecode for any artifact contracts the plan references by name.
       const finalPlan = plan.manifest
         ? { ...plan, manifest: hydrateArtifacts(plan.manifest) }
