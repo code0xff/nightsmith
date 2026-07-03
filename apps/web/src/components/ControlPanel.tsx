@@ -45,14 +45,19 @@ export function ControlPanel() {
         <Play />
         Replay
       </Button>
-      <Button variant="ghost" className="w-full" onClick={exportLatest} disabled={busy}>
+      <Button
+        variant="secondary"
+        className="w-full"
+        onClick={exportLatest}
+        disabled={busy}
+      >
         <Download />
         Export
       </Button>
 
       <Button
-        variant="ghost"
-        className="col-span-2 w-full text-destructive hover:text-destructive"
+        variant="secondary"
+        className="col-span-2 w-full"
         onClick={() => localnetAction("clear")}
         disabled={busy || running}
         title="Clear the stopped world (World State, Transactions, logs)"
