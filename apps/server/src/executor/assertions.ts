@@ -1,8 +1,9 @@
 import type { Assertion, AssertionResult } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
+import { maxUint256 } from "viem";
 import { functionAbi, readFunction } from "./calls.js";
-import { readTokenBalanceRaw } from "./tokens.js";
-import { fromTokenUnits, toTokenUnits } from "./units.js";
+import { readAllowanceRaw, readTokenBalanceRaw } from "./tokens.js";
+import { fromTokenUnits, toTokenUnits, toTokenUnitsOrMax } from "./units.js";
 
 /**
  * Normalize a call result (or the expected string) for stable equality, guided
@@ -44,6 +45,29 @@ export async function evaluateAssertion(
         passed,
         expected: `${assertion.expected} ${contract.symbol}`,
         actual: `${fromTokenUnits(actualRaw, contract.decimals)} ${contract.symbol}`,
+      };
+    }
+    case "allowance": {
+      const contract = runtime.getContract(assertion.contractId);
+      const actualRaw = await readAllowanceRaw(
+        runtime,
+        assertion.contractId,
+        assertion.owner,
+        assertion.spender,
+      );
+      const expectedRaw = toTokenUnitsOrMax(assertion.expected, contract.decimals);
+      const passed = actualRaw === expectedRaw;
+      // uint256-max reads back as an astronomical decimal; show "max" instead.
+      const fmt = (raw: bigint) =>
+        raw === maxUint256 ? "max" : `${fromTokenUnits(raw, contract.decimals)} ${contract.symbol}`;
+      const expectedLabel = assertion.expected === "max" ? "unlimited" : assertion.expected;
+      return {
+        description:
+          assertion.description ??
+          `${assertion.spender} may spend ${expectedLabel} ${contract.symbol} of ${assertion.owner}`,
+        passed,
+        expected: assertion.expected === "max" ? "max" : `${assertion.expected} ${contract.symbol}`,
+        actual: fmt(actualRaw),
       };
     }
     case "callResult": {

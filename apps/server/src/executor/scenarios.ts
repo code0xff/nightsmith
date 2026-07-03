@@ -2,7 +2,7 @@ import type { Action, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { callFunction } from "./calls.js";
 import { deployArtifact, deployMockErc20 } from "./contracts.js";
-import { mint, refreshAllTokenBalances, transfer } from "./tokens.js";
+import { approve, mint, refreshAllTokenBalances, transfer } from "./tokens.js";
 
 /** Human-readable label for a manifest action (used in reports/preview). */
 export function describeAction(action: Action): string {
@@ -13,6 +13,8 @@ export function describeAction(action: Action): string {
       return `Mint ${action.amount} → ${action.to} (${action.contractId})`;
     case "transfer":
       return `Transfer ${action.amount}: ${action.from} → ${action.to} (${action.contractId})`;
+    case "approve":
+      return `Approve ${action.amount === "max" ? "unlimited" : action.amount}: ${action.owner} → ${action.spender} (${action.contractId})`;
     case "call":
       return `Call ${action.contractId}.${action.function}(${action.args.length ? "…" : ""}) by ${action.from}`;
   }
@@ -44,6 +46,9 @@ async function runSingleAction(
       return;
     case "transfer":
       await transfer(runtime, action.contractId, action.from, action.to, action.amount);
+      return;
+    case "approve":
+      await approve(runtime, action.contractId, action.owner, action.spender, action.amount);
       return;
     case "call":
       await callFunction(runtime, action);

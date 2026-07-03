@@ -1,8 +1,13 @@
-import { formatEther, formatUnits, parseEther, parseUnits } from "viem";
+import { formatEther, formatUnits, maxUint256, parseEther, parseUnits } from "viem";
 
 /** Human decimal string -> token base units. */
 export function toTokenUnits(amount: string, decimals: number): bigint {
   return parseUnits(amount, decimals);
+}
+
+/** Like toTokenUnits, but the literal "max" maps to uint256-max (unlimited). */
+export function toTokenUnitsOrMax(amount: string, decimals: number): bigint {
+  return amount === "max" ? maxUint256 : parseUnits(amount, decimals);
 }
 
 /** Token base units -> human decimal string. */

@@ -1,7 +1,7 @@
 import type { Abi } from "viem";
 import type { WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
-import { fromTokenUnits, toTokenUnits } from "./units.js";
+import { fromTokenUnits, toTokenUnits, toTokenUnitsOrMax } from "./units.js";
 
 /** Read an account's token balance (base units). */
 export async function readTokenBalanceRaw(
@@ -17,6 +17,23 @@ export async function readTokenBalanceRaw(
     args: [runtime.resolveAddress(accountName)],
   });
   return balance as bigint;
+}
+
+/** Read an owner→spender allowance (base units). */
+export async function readAllowanceRaw(
+  runtime: Runtime,
+  contractId: string,
+  ownerName: string,
+  spenderName: string,
+): Promise<bigint> {
+  const contract = runtime.getContract(contractId);
+  const allowance = await runtime.getPublicClient().readContract({
+    address: contract.address,
+    abi: contract.abi,
+    functionName: "allowance",
+    args: [runtime.resolveAddress(ownerName), runtime.resolveAddress(spenderName)],
+  });
+  return allowance as bigint;
 }
 
 /** Read a balance and push it into the live world state. */
@@ -119,6 +136,50 @@ export async function mint(
   runtime.log(
     "success",
     `Minted ${amount} ${contract.symbol} to ${toName}`,
+    "executor",
+  );
+}
+
+export async function approve(
+  runtime: Runtime,
+  contractId: string,
+  ownerName: string,
+  spenderName: string,
+  amount: string,
+): Promise<void> {
+  const contract = runtime.getContract(contractId);
+  const owner = runtime.getAccount(ownerName);
+  const spenderAddress = runtime.resolveAddress(spenderName);
+  const wallet = runtime.walletFor(ownerName);
+  const human = amount === "max" ? "unlimited" : amount;
+
+  const hash = await wallet.writeContract({
+    address: contract.address,
+    abi: contract.abi,
+    functionName: "approve",
+    args: [spenderAddress, toTokenUnitsOrMax(amount, contract.decimals)],
+    account: owner.account,
+    chain: runtime.getChain(),
+  });
+  const receipt = await runtime.getPublicClient().waitForTransactionReceipt({ hash });
+
+  runtime.addTransaction({
+    hash,
+    ts: new Date().toISOString(),
+    from: owner.address,
+    to: contract.address,
+    fn: "approve",
+    status: receipt.status === "success" ? "success" : "reverted",
+    gasUsed: receipt.gasUsed.toString(),
+  });
+  if (receipt.status !== "success") {
+    throw new Error(
+      `approve of ${human} ${contract.symbol} from ${ownerName} to ${spenderName} reverted`,
+    );
+  }
+  runtime.log(
+    "success",
+    `Approved ${human} ${contract.symbol}: ${ownerName} → ${spenderName}`,
     "executor",
   );
 }

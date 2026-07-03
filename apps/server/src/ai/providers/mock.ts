@@ -32,6 +32,8 @@ function describeAction(a: Action): string {
       return `Mint ${a.amount} ${a.contractId} → ${a.to}`;
     case "transfer":
       return `Transfer ${a.amount} ${a.contractId}: ${a.from} → ${a.to}`;
+    case "approve":
+      return `Approve ${a.amount === "max" ? "unlimited" : a.amount} ${a.contractId}: ${a.owner} → ${a.spender}`;
     case "call":
       return `Call ${a.contractId}.${a.function}() by ${a.from}`;
   }
@@ -60,10 +62,12 @@ function expectedChanges(manifest: WorldManifest): string[] {
 }
 
 function assertionDescriptions(manifest: WorldManifest): string[] {
-  return manifest.assertions.map((a) =>
-    a.description ??
-    ("account" in a ? `${a.account} = ${a.expected}` : `${a.function}() = ${a.expected}`),
-  );
+  return manifest.assertions.map((a) => {
+    if (a.description) return a.description;
+    if (a.type === "tokenBalance") return `${a.account} = ${a.expected}`;
+    if (a.type === "allowance") return `allowance ${a.owner}->${a.spender} = ${a.expected}`;
+    return `${a.function}() = ${a.expected}`; // callResult
+  });
 }
 
 /** Assemble a create/modify/run plan from a finished manifest. */

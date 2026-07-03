@@ -119,6 +119,26 @@ export const TransferAction = z.object({
   amount: DecimalAmount,
 });
 
+/**
+ * A token amount for approvals/allowances: a human decimal string, or the
+ * literal "max" for an unlimited (uint256-max) approval. Kept separate from
+ * DecimalAmount so mint/transfer amounts stay strictly numeric.
+ */
+export const TokenAmountOrMax = z.union([DecimalAmount, z.literal("max")]);
+export type TokenAmountOrMax = z.infer<typeof TokenAmountOrMax>;
+
+/** Grant an ERC20 allowance: owner approves spender to move `amount` tokens. */
+export const ApproveAction = z.object({
+  type: z.literal("approve"),
+  contractId: Identifier,
+  /** Token owner granting the allowance — must be a signable named account. */
+  owner: AccountName,
+  /** Spender being approved: a named account or a literal 0x address. */
+  spender: AccountRef,
+  /** Allowance in human units, or "max" for an unlimited approval. */
+  amount: TokenAmountOrMax,
+});
+
 /** Call any function on a deployed contract (init/setup, state changes). */
 export const CallAction = z.object({
   type: z.literal("call"),
@@ -137,6 +157,7 @@ export const Action = z.discriminatedUnion("type", [
   DeployContractAction,
   MintAction,
   TransferAction,
+  ApproveAction,
   CallAction,
 ]);
 export type Action = z.infer<typeof Action>;
@@ -166,9 +187,23 @@ export const CallResultAssertion = z.object({
   description: z.string().optional(),
 });
 
+/** Assert an ERC20 allowance: how much `spender` may move on `owner`'s behalf. */
+export const AllowanceAssertion = z.object({
+  type: z.literal("allowance"),
+  contractId: Identifier,
+  /** Token owner: a named account or a literal 0x address. */
+  owner: AccountRef,
+  /** Spender: a named account or a literal 0x address. */
+  spender: AccountRef,
+  /** Expected allowance in human units, or "max" for an unlimited approval. */
+  expected: TokenAmountOrMax,
+  description: z.string().optional(),
+});
+
 export const Assertion = z.discriminatedUnion("type", [
   TokenBalanceAssertion,
   CallResultAssertion,
+  AllowanceAssertion,
 ]);
 export type Assertion = z.infer<typeof Assertion>;
 

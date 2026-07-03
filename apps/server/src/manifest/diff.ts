@@ -13,6 +13,8 @@ function indexActions(m: WorldManifest): Map<string, string> {
     if (a.type === "mint") map.set(`mint:${a.contractId}:${a.to}`, a.amount);
     if (a.type === "transfer")
       map.set(`transfer:${a.contractId}:${a.from}->${a.to}`, a.amount);
+    if (a.type === "approve")
+      map.set(`approve:${a.contractId}:${a.owner}->${a.spender}`, a.amount);
   }
   return map;
 }
@@ -49,8 +51,11 @@ export function diffManifests(
     }
   }
 
-  const assertKey = (a: WorldManifest["assertions"][number]) =>
-    "account" in a ? `${a.account}:${a.contractId}` : `${a.function}:${a.contractId}`;
+  const assertKey = (a: WorldManifest["assertions"][number]) => {
+    if (a.type === "tokenBalance") return `${a.account}:${a.contractId}`;
+    if (a.type === "allowance") return `${a.owner}->${a.spender}:${a.contractId}`;
+    return `${a.function}:${a.contractId}`; // callResult
+  };
   const beforeAsserts = new Map(before.assertions.map((a) => [assertKey(a), a.expected]));
   for (const a of after.assertions) {
     const prev = beforeAsserts.get(assertKey(a));

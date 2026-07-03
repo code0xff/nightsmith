@@ -15,10 +15,17 @@ export function validateManifest(input: unknown): WorldManifest {
     if ((action.type === "mint" || action.type === "transfer") && isAddress(action.to)) {
       action.to = action.to.toLowerCase();
     }
+    if (action.type === "approve" && isAddress(action.spender)) {
+      action.spender = action.spender.toLowerCase();
+    }
   }
   for (const assertion of manifest.assertions) {
     if (assertion.type === "tokenBalance" && isAddress(assertion.account)) {
       assertion.account = assertion.account.toLowerCase();
+    }
+    if (assertion.type === "allowance") {
+      if (isAddress(assertion.owner)) assertion.owner = assertion.owner.toLowerCase();
+      if (isAddress(assertion.spender)) assertion.spender = assertion.spender.toLowerCase();
     }
   }
 
@@ -47,6 +54,10 @@ export function validateManifest(input: unknown): WorldManifest {
       requireAccount(action.from, where); // sender must be a signable named account
       requireRecipient(action.to, where);
     }
+    if (action.type === "approve") {
+      requireAccount(action.owner, where); // owner signs the approval
+      requireRecipient(action.spender, where);
+    }
     if (action.type === "call") requireAccount(action.from, where); // signer
   }
 
@@ -54,6 +65,10 @@ export function validateManifest(input: unknown): WorldManifest {
     const where = `assertions[${i}] (${assertion.type})`;
     requireContract(assertion.contractId, where);
     if (assertion.type === "tokenBalance") requireRecipient(assertion.account, where);
+    if (assertion.type === "allowance") {
+      requireRecipient(assertion.owner, where);
+      requireRecipient(assertion.spender, where);
+    }
   }
 
   // Uploaded artifacts must be hydrated (abi+bytecode) before execution.

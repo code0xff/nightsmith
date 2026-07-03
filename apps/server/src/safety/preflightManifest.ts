@@ -110,7 +110,8 @@ function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnin
     return;
   }
 
-  // mint / transfer target token semantics; warn if the resolved ABI lacks the fn.
+  // mint / transfer / approve map 1:1 to an ERC20 function named by action.type;
+  // warn if the resolved ABI lacks it.
   if (findFunctions(abi, action.type).length === 0) {
     warnings.push(`${action.contractId} has no "${action.type}" function in its ABI`);
   }
@@ -127,6 +128,13 @@ function checkAssertion(
   if (assertion.type === "tokenBalance") {
     if (findFunctions(abi, "balanceOf").length === 0) {
       warnings.push(`${assertion.contractId} has no balanceOf() — cannot check a token balance`);
+    }
+    return;
+  }
+
+  if (assertion.type === "allowance") {
+    if (findFunctions(abi, "allowance").length === 0) {
+      warnings.push(`${assertion.contractId} has no allowance() — cannot check an allowance`);
     }
     return;
   }
