@@ -13,12 +13,61 @@ export const PROVIDER_NAMES: ProviderName[] = ["mock", "openai", "codex", "claud
 export type PlanLogger = (level: "info" | "warning", message: string) => void;
 
 /**
- * Providers to try, in order, resolved purely by availability:
+ * An explicit provider pinned via `NIGHTSMITH_AI_PROVIDER` (mock|openai|codex|
+ * claude), or undefined for the default availability-ordered auto-selection.
+ * Throws on an unrecognized value so a typo surfaces instead of silently
+ * falling back to auto.
+ */
+function forcedProvider(): ProviderName | undefined {
+  const raw = process.env.NIGHTSMITH_AI_PROVIDER?.trim().toLowerCase();
+  if (!raw) return undefined;
+  if (!PROVIDER_NAMES.includes(raw as ProviderName)) {
+    throw new Error(
+      `Invalid NIGHTSMITH_AI_PROVIDER "${raw}" — choose one of: ${PROVIDER_NAMES.join(", ")}.`,
+    );
+  }
+  return raw as ProviderName;
+}
+
+/**
+ * Resolve a pinned provider to its implementation, verifying it's actually
+ * usable. A selected provider must never silently fall back to a different AI,
+ * so an unavailable choice throws a clear, actionable error.
+ */
+async function resolveForcedProvider(
+  name: ProviderName,
+  signal?: AbortSignal,
+): Promise<AiProvider> {
+  switch (name) {
+    case "openai":
+      if (!isOpenAiConnected())
+        throw new Error("NIGHTSMITH_AI_PROVIDER=openai but OPENAI_API_KEY is not set.");
+      return openaiProvider;
+    case "codex":
+      if (!(await isCodexAvailable(signal)))
+        throw new Error("NIGHTSMITH_AI_PROVIDER=codex but the `codex` CLI is not installed.");
+      return codexProvider;
+    case "claude":
+      if (!(await isClaudeAvailable(signal)))
+        throw new Error("NIGHTSMITH_AI_PROVIDER=claude but the `claude` CLI is not installed.");
+      return claudeProvider;
+    case "mock":
+      return mockProvider;
+  }
+}
+
+/**
+ * Providers to try, in order. If `NIGHTSMITH_AI_PROVIDER` pins one, that's the
+ * only provider used (no fallback). Otherwise the chain is resolved purely by
+ * availability:
  *   OpenAI (if a key is set) → Codex (if the CLI is installed) → Claude Code
  *   CLI (if installed) → mock (always).
- * No manual selection — the first available wins, and the rest are fallbacks.
+ * With no pin, the first available wins and the rest are fallbacks.
  */
 async function providerChain(signal?: AbortSignal): Promise<AiProvider[]> {
+  const forced = forcedProvider();
+  if (forced) return [await resolveForcedProvider(forced, signal)];
+
   const chain: AiProvider[] = [];
   if (isOpenAiConnected()) chain.push(openaiProvider);
   // Pass the signal so a Stop during the CLI `--version` probes cancels them
@@ -31,6 +80,10 @@ async function providerChain(signal?: AbortSignal): Promise<AiProvider[]> {
 
 /** The provider that will actually run right now (the chain head). */
 export async function activeProvider(): Promise<ProviderName> {
+  // A pin is the selected provider even if it's currently unavailable — report
+  // the choice here; the availability check fails loudly at plan time instead.
+  const forced = forcedProvider();
+  if (forced) return forced;
   return (await providerChain())[0]!.name as ProviderName;
 }
 
