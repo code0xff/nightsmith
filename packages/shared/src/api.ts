@@ -82,6 +82,8 @@ export type ExecuteResponse = z.infer<typeof ExecuteResponse>;
 export const LocalnetAction = z.enum([
   "start",
   "stop",
+  // Wipe the (stopped) world display + logs back to a blank cockpit.
+  "clear",
 ]);
 export type LocalnetAction = z.infer<typeof LocalnetAction>;
 

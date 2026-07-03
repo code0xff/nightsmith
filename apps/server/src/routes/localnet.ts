@@ -34,6 +34,12 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
         case "stop":
           await runtime.stopLocalnet();
           break;
+        case "clear":
+          if (runtime.isRunning()) {
+            throw new AppError("Stop the localnet before clearing", 409);
+          }
+          runtime.clearWorld();
+          break;
       }
       return { ok: true, state: runtime.getState() };
     });

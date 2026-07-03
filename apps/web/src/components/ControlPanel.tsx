@@ -1,4 +1,4 @@
-import { Download, Play, Power, Square } from "lucide-react";
+import { Download, Eraser, Play, Power, Square } from "lucide-react";
 import { CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { exportLatest, localnetAction, replayLatest } from "@/lib/actions";
@@ -6,7 +6,8 @@ import { useAppStore } from "@/state/useAppStore";
 
 /**
  * Direct localnet controls: a full-width lifecycle toggle (Start/Stop) over a
- * 2-column row of session controls (Replay/Export).
+ * 2-column row of session controls (Replay/Export), then a full-width Clear
+ * that wipes the stopped world back to a blank cockpit.
  */
 export function ControlPanel() {
   const running = useAppStore((s) => s.world.localnet.status === "running");
@@ -47,6 +48,17 @@ export function ControlPanel() {
       <Button variant="ghost" className="w-full" onClick={exportLatest} disabled={busy}>
         <Download />
         Export
+      </Button>
+
+      <Button
+        variant="ghost"
+        className="col-span-2 w-full text-destructive hover:text-destructive"
+        onClick={() => localnetAction("clear")}
+        disabled={busy || running}
+        title="Clear the stopped world (World State, Transactions, logs)"
+      >
+        <Eraser />
+        Clear
       </Button>
     </CardFooter>
   );

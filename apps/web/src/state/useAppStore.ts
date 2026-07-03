@@ -88,6 +88,8 @@ export const useAppStore = create<AppState>((set) => ({
           return { world: event.state };
         case "status":
           return { world: { ...s.world, execution: event.status } };
+        case "logsCleared":
+          return { logs: [] };
         default:
           return {};
       }

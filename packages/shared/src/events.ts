@@ -144,10 +144,14 @@ export const StatusEvent = z.object({
   status: ExecutionStatus,
   message: z.string().optional(),
 });
+// The server dropped its log buffer (a world reset/clear); connected clients
+// should drop their locally-accumulated logs to match.
+export const LogsClearedEvent = z.object({ type: z.literal("logsCleared") });
 
 export const ServerEvent = z.discriminatedUnion("type", [
   LogEvent,
   StateEvent,
   StatusEvent,
+  LogsClearedEvent,
 ]);
 export type ServerEvent = z.infer<typeof ServerEvent>;

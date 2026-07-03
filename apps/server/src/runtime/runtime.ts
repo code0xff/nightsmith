@@ -393,6 +393,15 @@ export class Runtime {
     this.commit();
   }
 
+  /**
+   * Wipe the world display + logs back to a blank cockpit. Only meaningful when
+   * the localnet is stopped (the caller guards this) — otherwise the panels
+   * would no longer match the live chain.
+   */
+  clearWorld(): void {
+    this.resetWorldState();
+  }
+
   private resetWorldState(): void {
     this.accounts.clear();
     this.contracts.clear();

@@ -4,7 +4,7 @@ import { ApiRequestError, api } from "./api";
 import { useAppStore } from "@/state/useAppStore";
 
 /** Control/localnet actions that invalidate the live-session cursor. */
-const INVALIDATING_CONTROLS = new Set(["stop"]);
+const INVALIDATING_CONTROLS = new Set(["stop", "clear"]);
 
 function describeError(err: unknown): string {
   if (err instanceof ApiRequestError) {
@@ -108,6 +108,7 @@ export function cancelPlan(): void {
 const ACTION_LABELS: Record<LocalnetAction, string> = {
   start: "Localnet started",
   stop: "Localnet stopped",
+  clear: "World cleared",
 };
 
 /** Run a direct localnet control action. */

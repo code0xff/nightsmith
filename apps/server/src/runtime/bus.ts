@@ -61,6 +61,9 @@ export class EventBus {
 
   clearLogs(): void {
     this.logs.length = 0;
+    // Tell already-connected clients to drop their local logs too — otherwise
+    // only a fresh page load (which reads the emptied buffer) would reflect it.
+    this.publish({ type: "logsCleared" });
   }
 
   private publish(event: ServerEvent): void {
