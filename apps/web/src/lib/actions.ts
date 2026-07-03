@@ -37,7 +37,7 @@ export async function submitPrompt(prompt: string): Promise<void> {
       store.sessionId ?? undefined,
       controller.signal,
     );
-    store.setPlan(plan, planId, warnings);
+    store.setPlan(plan, planId, warnings, prompt);
     toast.success("Plan ready for review", {
       description: warnings.length ? `${plan.summary} — ${warnings.length} warning(s)` : plan.summary,
     });
@@ -62,7 +62,12 @@ export async function runCurrentPlan(): Promise<void> {
   store.setBusy(true);
   toast("Execution started", { description: plan.summary });
   try {
-    const res = await api.execute(plan, planId ?? undefined, store.sessionId ?? undefined);
+    const res = await api.execute(
+      plan,
+      planId ?? undefined,
+      store.sessionId ?? undefined,
+      store.planPrompt ?? undefined,
+    );
     // Track the live session so the next prompt/extend targets this world. A
     // control action that tears down or rewinds the world (stop/reset/revert)
     // returns no session and invalidates the live cursor — clear it so the next

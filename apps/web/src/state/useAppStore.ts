@@ -21,6 +21,8 @@ interface AppState {
   planId: string | null;
   /** Server-computed, non-blocking pre-execution warnings for the current plan. */
   planWarnings: string[];
+  /** The prompt that produced the current plan — sent on execute to persist with the session. */
+  planPrompt: string | null;
   /** The most recently executed session — the live world a follow-up extends. */
   sessionId: string | null;
   /** Bumped after a successful execution so the prompt box can clear itself. */
@@ -38,7 +40,12 @@ interface AppState {
   setAnvil: (anvil: AnvilStatus) => void;
   applyEvent: (event: ServerEvent) => void;
   resetSnapshot: () => void;
-  setPlan: (plan: Plan | null, planId?: string | null, warnings?: string[]) => void;
+  setPlan: (
+    plan: Plan | null,
+    planId?: string | null,
+    warnings?: string[],
+    prompt?: string | null,
+  ) => void;
   setSessionId: (id: string | null) => void;
   clearPrompt: () => void;
   setBusy: (v: boolean) => void;
@@ -55,6 +62,7 @@ export const useAppStore = create<AppState>((set) => ({
   plan: null,
   planId: null,
   planWarnings: [],
+  planPrompt: null,
   sessionId: null,
   promptResetSignal: 0,
   busy: false,
@@ -88,7 +96,8 @@ export const useAppStore = create<AppState>((set) => ({
   // On (re)connect the server replays its snapshot; drop stale local logs first.
   resetSnapshot: () => set({ logs: [] }),
 
-  setPlan: (plan, planId = null, warnings = []) => set({ plan, planId, planWarnings: warnings }),
+  setPlan: (plan, planId = null, warnings = [], prompt = null) =>
+    set({ plan, planId, planWarnings: warnings, planPrompt: prompt }),
   setSessionId: (sessionId) => set({ sessionId }),
   clearPrompt: () => set((s) => ({ promptResetSignal: s.promptResetSignal + 1 })),
   setBusy: (v) => set({ busy: v }),

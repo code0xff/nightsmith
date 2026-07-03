@@ -62,10 +62,10 @@ export const api = {
       signal,
     }),
 
-  execute: (plan: Plan, planId?: string, baseSessionId?: string) =>
+  execute: (plan: Plan, planId?: string, baseSessionId?: string, prompt?: string) =>
     request("/api/execute", ExecuteResponse, {
       method: "POST",
-      body: JSON.stringify({ plan, planId, baseSessionId }),
+      body: JSON.stringify({ plan, planId, baseSessionId, prompt }),
     }),
 
   localnet: (action: LocalnetAction, snapshotId?: string) =>

@@ -24,6 +24,7 @@ const defaultNetwork = () => NetworkConfig.parse({ kind: "anvil-local" });
 async function runManifest(
   runtime: Runtime,
   rawManifest: WorldManifest,
+  prompt?: string,
 ): Promise<ExecuteResponse> {
   // Re-validate here too: replay/resume load manifests straight from disk and
   // must not bypass shape/semantic/network safety checks.
@@ -31,7 +32,7 @@ async function runManifest(
   validateNetwork(manifest.network);
 
   const sessionId = newSessionId(manifest.name);
-  saveSession({ id: sessionId, manifest });
+  saveSession({ id: sessionId, manifest, prompt });
   const report = await executeManifest(runtime, manifest, { sessionId });
   runtime.setLastManifest(manifest);
   // If every action landed (an assertion may still have failed), the whole
@@ -39,7 +40,7 @@ async function runManifest(
   if (!report.error && runtime.isRunning()) {
     runtime.setLiveSession(sessionId, manifest.actions.length);
   }
-  saveSession({ id: sessionId, manifest, report });
+  saveSession({ id: sessionId, manifest, report, prompt });
   return { sessionId, report, state: runtime.getState() };
 }
 
@@ -53,6 +54,7 @@ async function extendManifest(
   runtime: Runtime,
   rawManifest: WorldManifest,
   baseSessionId?: string,
+  prompt?: string,
 ): Promise<ExecuteResponse> {
   const liveId = runtime.getLiveSessionId();
   if (!runtime.isRunning() || !liveId) {
@@ -95,7 +97,9 @@ async function extendManifest(
 
   runtime.setLiveSession(liveId, next.actions.length);
   runtime.setLastManifest(next);
-  saveSession({ id: liveId, manifest: next, report });
+  // Sticky in saveSession keeps the original create prompt; passing here only
+  // backfills a session that somehow has none yet.
+  saveSession({ id: liveId, manifest: next, report, prompt });
   return { sessionId: liveId, report, state: runtime.getState() };
 }
 
@@ -123,7 +127,7 @@ function manifestToReplay(runtime: Runtime): WorldManifest {
 export async function runPlan(
   runtime: Runtime,
   plan: Plan,
-  opts: { baseSessionId?: string } = {},
+  opts: { baseSessionId?: string; prompt?: string } = {},
 ): Promise<ExecuteResponse> {
   const { manifest } = validatePlanForExecution(plan);
 
@@ -131,10 +135,10 @@ export async function runPlan(
     case "createWorld":
     case "modifyWorld":
     case "runScenario":
-      return runManifest(runtime, manifest!);
+      return runManifest(runtime, manifest!, opts.prompt);
 
     case "extendWorld":
-      return extendManifest(runtime, manifest!, opts.baseSessionId);
+      return extendManifest(runtime, manifest!, opts.baseSessionId, opts.prompt);
 
     case "control": {
       const control = plan.control!;

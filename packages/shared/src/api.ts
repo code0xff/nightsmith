@@ -9,9 +9,12 @@ import { HexString } from "./types.js";
  * live updates arrive separately over the WebSocket (`events.ts`).
  */
 
+/** Upper bound on a prompt, enforced at both planning and execution. */
+export const MAX_PROMPT_LENGTH = 10_000;
+
 // POST /api/prompt — natural language -> reviewable plan
 export const PromptRequest = z.object({
-  prompt: z.string().min(1),
+  prompt: z.string().min(1).max(MAX_PROMPT_LENGTH),
   /** Optional session to modify/extend. */
   sessionId: z.string().optional(),
 });
@@ -39,6 +42,8 @@ export const ExecuteRequest = z.object({
    * explicit about which world it means. Ignored for non-extend intents.
    */
   baseSessionId: z.string().optional(),
+  /** The natural-language prompt that produced this plan; persisted with the session. */
+  prompt: z.string().max(MAX_PROMPT_LENGTH).optional(),
 });
 export type ExecuteRequest = z.infer<typeof ExecuteRequest>;
 
@@ -104,6 +109,8 @@ export const SessionSummary = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   lastRunStatus: z.enum(["completed", "failed", "none"]).default("none"),
+  /** The natural-language prompt that originally created this session, if any. */
+  prompt: z.string().optional(),
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
 

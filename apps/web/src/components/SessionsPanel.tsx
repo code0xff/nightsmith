@@ -96,6 +96,11 @@ export function SessionsPanel() {
                     </Badge>
                   )}
                 </div>
+                {s.prompt && (
+                  <div className="truncate text-xs text-muted-foreground" title={s.prompt}>
+                    “{s.prompt}”
+                  </div>
+                )}
                 <span className="font-mono text-xs text-muted-foreground">
                   {formatTime(s.updatedAt)} · {s.id}
                 </span>

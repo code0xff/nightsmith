@@ -3,6 +3,7 @@ import { SendHorizontal, Sparkles, Square } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_PROMPT_LENGTH } from "@nightsmith/shared";
 import { cancelPlanning, submitPrompt } from "@/lib/actions";
 import { useAppStore } from "@/state/useAppStore";
 
@@ -52,6 +53,7 @@ export function PromptBox() {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           rows={4}
+          maxLength={MAX_PROMPT_LENGTH}
           disabled={busy}
           className="resize-y font-sans disabled:cursor-not-allowed disabled:opacity-60"
         />

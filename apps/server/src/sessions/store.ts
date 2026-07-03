@@ -55,13 +55,20 @@ export function saveSession(args: {
   id: string;
   manifest: WorldManifest;
   report?: ExecutionReport | null;
+  /** NL prompt that produced this world; kept sticky (the original wins). */
+  prompt?: string;
 }): SessionSummary {
   const dir = ensureDir(sessionDir(assertSafeId(args.id)));
   const now = new Date().toISOString();
 
   let createdAt = now;
+  let prompt = args.prompt;
   if (existsSync(metaPath(args.id))) {
-    createdAt = readJson<SessionSummary>(metaPath(args.id)).createdAt;
+    const prev = readJson<SessionSummary>(metaPath(args.id));
+    createdAt = prev.createdAt;
+    // Sticky: preserve the prompt that first created the session (survives the
+    // two-phase save and any extend re-save).
+    prompt = prev.prompt ?? args.prompt;
   }
 
   const summary: SessionSummary = {
@@ -70,6 +77,7 @@ export function saveSession(args: {
     createdAt,
     updatedAt: now,
     lastRunStatus: args.report ? args.report.status : "none",
+    ...(prompt ? { prompt } : {}),
   };
 
   writeFileSync(join(dir, "manifest.json"), JSON.stringify(args.manifest, null, 2) + "\n");
