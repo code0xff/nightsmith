@@ -43,7 +43,7 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
     "name": string,
     "createdAt": ISO8601 string,
     "network": { "kind": "anvil-local", "chainId": 31337, "port": 8545, "forkUrl": null, "broadcast": false },
-    "accounts": [ { "name": string, "addressIndex": 0..9, "fundEth": "0" } ],
+    "accounts": [ { "name": string, "addressIndex": 0..9, "fundEth": string } ],
     "contracts": [ { "id": string, "kind": "MockERC20", "name": string, "symbol": string, "decimals": number } ],
     "actions": [
       { "type": "deployContract", "contractId": string, "deployer": string } |
@@ -57,7 +57,9 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
   "uiPreview": { "title": string, "description": string, "accent": "default"|"warning"|"destructive" }
 }
 
-Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest. For createWorld/modifyWorld/extendWorld/runScenario set "manifest" and leave control/explanation null. For extendWorld the manifest must be the previous one with new actions appended at the end (prior actions unchanged). For control set "control" only. For explain set "explanation" only.
+Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest.
+
+Native ETH: each account's "fundEth" is its STARTING ETH balance, a decimal ether string. Use "0" to leave Anvil's default (~10000 ETH, so the account still holds gas). When the user asks to start an account with a specific amount of ETH (e.g. "Alice starts with 100 ETH", "give Bob 100 ETH"), set that account's "fundEth" to the exact amount ("100") — a non-zero value sets the balance absolutely (it may raise or lower it). Do NOT add a mint/transfer action for native ETH; funding is expressed only through "fundEth". There is no assertion type for native ETH balances. For createWorld/modifyWorld/extendWorld/runScenario set "manifest" and leave control/explanation null. For extendWorld the manifest must be the previous one with new actions appended at the end (prior actions unchanged). For control set "control" only. For explain set "explanation" only.
 
 Recipients: a mint "to", a transfer "to", and an assertion "account" may be EITHER a named account declared in accounts[] OR a literal 20-byte 0x address. If the user gives a concrete 0x address, use it VERBATIM — never replace it with a named account, and do not add it to accounts[]. A transfer "from" and a deployContract "deployer" MUST be named accounts (Nightsmith can only sign for those).
 

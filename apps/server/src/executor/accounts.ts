@@ -4,9 +4,11 @@ import type { Runtime } from "../runtime/runtime.js";
 import { fromWei, toWei } from "./units.js";
 
 /**
- * Resolve each named account from the Anvil mnemonic and ensure it holds at
- * least its requested ETH. Anvil dev accounts start pre-funded, so funding is
- * a top-up only — we never reduce a balance.
+ * Resolve each named account from the Anvil mnemonic and set its starting ETH.
+ * Anvil dev accounts start pre-funded (~10000 ETH). `fundEth` of "0" (the
+ * default) means "leave that default" so every account holds gas; a non-zero
+ * value sets the balance ABSOLUTELY — raising OR lowering it — so "start Alice
+ * with 100 ETH" begins at exactly 100, not 10100.
  */
 export async function setupAccounts(
   runtime: Runtime,
@@ -18,10 +20,10 @@ export async function setupAccounts(
     let balance = await client.getBalance({ address: resolved.address });
 
     const want = toWei(def.fundEth);
-    if (want > balance) {
+    if (def.fundEth !== "0" && want !== balance) {
       await setBalance(client, resolved.address, want);
       balance = want;
-      runtime.log("info", `Funded ${def.name} with ${def.fundEth} ETH`, "executor");
+      runtime.log("info", `Set ${def.name} starting balance to ${def.fundEth} ETH`, "executor");
     }
 
     runtime.upsertAccountState({
