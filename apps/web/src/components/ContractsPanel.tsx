@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileCode2, FolderOpen, Lock, Trash2, Upload } from "lucide-react";
+import { ChevronDown, FileCode2, FolderOpen, Lock, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ArtifactSummary } from "@nightsmith/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog } from "@/components/ui/dialog";
 import { api, ApiRequestError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 /** Pull abi + 0x bytecode out of a pasted Foundry/Hardhat artifact (or {abi,bytecode}). */
 function parseArtifact(json: string): { abi: unknown[]; bytecode: string } {
@@ -25,7 +26,13 @@ function parseArtifact(json: string): { abi: unknown[]; bytecode: string } {
   return { abi, bytecode };
 }
 
-export function ContractsPanel() {
+export function ContractsPanel({
+  expanded,
+  onToggle,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -104,19 +111,32 @@ export function ContractsPanel() {
 
   return (
     <>
-      <Card className="flex min-h-0 flex-col">
+      <Card className={cn("flex flex-col", expanded ? "min-h-0 flex-1" : "shrink-0")}>
         <CardHeader>
-          <CardTitle>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={expanded}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium leading-none tracking-tight"
+          >
+            <ChevronDown
+              className={cn(
+                "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                !expanded && "-rotate-90",
+              )}
+            />
             <FileCode2 className="size-3.5 text-muted-foreground" />
             Contracts
-          </CardTitle>
+            <span className="text-xs font-normal text-muted-foreground">{artifacts.length}</span>
+          </button>
           <Button variant="outline" onClick={() => setOpen(true)}>
             <Upload />
             Upload
           </Button>
         </CardHeader>
-        <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
-          {artifacts.map((a) => (
+        {expanded && (
+          <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
+            {artifacts.map((a) => (
             <div
               key={a.name}
               className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
@@ -145,7 +165,8 @@ export function ContractsPanel() {
               MyVault with owner Alice and cap 1000000”.
             </p>
           )}
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
       <Dialog

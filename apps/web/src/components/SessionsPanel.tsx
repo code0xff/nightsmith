@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Download, History, Play, RefreshCw, Trash2, Upload } from "lucide-react";
 import type { SessionSummary } from "@nightsmith/shared";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
@@ -10,15 +10,21 @@ import { exportSession, importManifestFile, replaySession } from "@/lib/actions"
 import { useAppStore } from "@/state/useAppStore";
 import { cn, formatTime } from "@/lib/utils";
 
-export function SessionsPanel() {
+export function SessionsPanel({
+  expanded,
+  onToggle,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Ids whose full prompt is expanded (collapsed to 2 lines by default).
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set());
 
-  const toggleExpanded = (id: string) =>
-    setExpanded((prev) => {
+  const togglePrompt = (id: string) =>
+    setExpandedPrompts((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -76,12 +82,24 @@ export function SessionsPanel() {
   };
 
   return (
-    <Card className="flex min-h-0 flex-col">
+    <Card className={cn("flex flex-col", expanded ? "min-h-0 flex-1" : "shrink-0")}>
       <CardHeader>
-        <CardTitle>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium leading-none tracking-tight"
+        >
+          <ChevronDown
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-transform",
+              !expanded && "-rotate-90",
+            )}
+          />
           <History className="size-3.5 text-muted-foreground" />
           Sessions
-        </CardTitle>
+          <span className="text-xs font-normal text-muted-foreground">{sessions.length}</span>
+        </button>
         <div className="flex items-center gap-0.5">
           <input
             ref={fileRef}
@@ -104,8 +122,9 @@ export function SessionsPanel() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
-        {loading && sessions.length === 0 ? (
+      {expanded && (
+        <CardContent className="min-h-0 space-y-1.5 overflow-y-auto scrollbar-thin">
+          {loading && sessions.length === 0 ? (
           <p className="text-xs text-muted-foreground">Loading sessions…</p>
         ) : error ? (
           <p className="text-xs text-destructive">
@@ -135,14 +154,16 @@ export function SessionsPanel() {
                 {s.prompt && (
                   <button
                     type="button"
-                    onClick={() => toggleExpanded(s.id)}
-                    aria-expanded={expanded.has(s.id)}
-                    aria-label={expanded.has(s.id) ? "Collapse prompt" : "Expand prompt"}
+                    onClick={() => togglePrompt(s.id)}
+                    aria-expanded={expandedPrompts.has(s.id)}
+                    aria-label={expandedPrompts.has(s.id) ? "Collapse prompt" : "Expand prompt"}
                     className="mt-0.5 flex w-full items-start gap-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <span
                       className={cn(
-                        expanded.has(s.id) ? "whitespace-pre-wrap break-words" : "line-clamp-2",
+                        expandedPrompts.has(s.id)
+                          ? "whitespace-pre-wrap break-words"
+                          : "line-clamp-2",
                       )}
                     >
                       “{s.prompt}”
@@ -150,7 +171,7 @@ export function SessionsPanel() {
                     <ChevronDown
                       className={cn(
                         "mt-0.5 size-3 shrink-0 transition-transform",
-                        expanded.has(s.id) && "rotate-180",
+                        expandedPrompts.has(s.id) && "rotate-180",
                       )}
                     />
                   </button>
@@ -188,7 +209,8 @@ export function SessionsPanel() {
             </div>
           ))
         )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AnvilInstall } from "@/components/AnvilInstall";
 import { LocalnetStatus } from "@/components/LocalnetStatus";
 import { ContractsPanel } from "@/components/ContractsPanel";
@@ -9,15 +10,28 @@ import { LogConsole } from "@/components/LogConsole";
 import { TransactionsPanel } from "@/components/TransactionsPanel";
 
 /** The cockpit dashboard: ops rail · work column · observability column. */
+/** Which left-rail panel is expanded (single-open accordion). */
+type RailPanel = "contracts" | "sessions" | null;
+
 export function Dashboard() {
+  const [openPanel, setOpenPanel] = useState<RailPanel>("sessions");
+  const toggle = (panel: Exclude<RailPanel, null>) =>
+    setOpenPanel((cur) => (cur === panel ? null : panel));
+
   return (
     <>
       <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-12">
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto scrollbar-thin lg:col-span-3">
+        <div className="flex min-h-0 flex-col gap-3 lg:col-span-3">
           <AnvilInstall />
           <LocalnetStatus />
-          <ContractsPanel />
-          <SessionsPanel />
+          <ContractsPanel
+            expanded={openPanel === "contracts"}
+            onToggle={() => toggle("contracts")}
+          />
+          <SessionsPanel
+            expanded={openPanel === "sessions"}
+            onToggle={() => toggle("sessions")}
+          />
         </div>
 
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto scrollbar-thin lg:col-span-5">
