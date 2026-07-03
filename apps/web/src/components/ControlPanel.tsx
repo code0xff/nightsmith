@@ -1,4 +1,4 @@
-import { Camera, Download, Play, Power, Square, Undo2 } from "lucide-react";
+import { Download, Play, Power, Square } from "lucide-react";
 import { CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { exportLatest, localnetAction, replayLatest } from "@/lib/actions";
@@ -6,7 +6,7 @@ import { useAppStore } from "@/state/useAppStore";
 
 /**
  * Direct localnet controls: a full-width lifecycle toggle (Start/Stop) over a
- * 2-column grid of snapshot (Snapshot/Revert) and session (Replay/Export).
+ * 2-column row of session controls (Replay/Export).
  */
 export function ControlPanel() {
   const running = useAppStore((s) => s.world.localnet.status === "running");
@@ -34,25 +34,6 @@ export function ControlPanel() {
           Start
         </Button>
       )}
-
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => localnetAction("snapshot")}
-        disabled={busy || !running}
-      >
-        <Camera />
-        Snapshot
-      </Button>
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => localnetAction("revert")}
-        disabled={busy || !running}
-      >
-        <Undo2 />
-        Revert
-      </Button>
 
       <Button
         variant="secondary"

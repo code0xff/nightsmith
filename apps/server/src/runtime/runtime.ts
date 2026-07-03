@@ -85,7 +85,6 @@ export class Runtime {
   private chain: Chain | null = null;
   private publicClient: PublicClient | null = null;
   private mnemonic = ANVIL_MNEMONIC;
-  private lastSnapshotId: string | null = null;
   private lastManifestJson: string | null = null;
 
   /**
@@ -335,7 +334,6 @@ export class Runtime {
     this.anvil = null;
     this.publicClient = null;
     this.chain = null;
-    this.lastSnapshotId = null;
     this.liveSessionId = null;
     this.appliedActionCount = 0;
     this.walletCache.clear();
@@ -350,32 +348,10 @@ export class Runtime {
     this.patchLocalnet({ blockNumber: status.blockNumber, chainId: status.chainId });
   }
 
-  async snapshot(): Promise<string> {
-    const id = await takeSnapshot(this.getPublicClient());
-    this.lastSnapshotId = id;
-    this.log("info", `Snapshot taken (${id})`, "anvil");
-    return id;
-  }
-
-  async revert(id?: string): Promise<boolean> {
-    const target = id ?? this.lastSnapshotId;
-    if (!target) throw new AppError("No snapshot available to revert to", 409);
-    const ok = await revertSnapshot(this.getPublicClient(), target);
-    this.log(ok ? "info" : "warning", `Revert to ${target} ${ok ? "ok" : "failed"}`, "anvil");
-    // The chain no longer matches the applied-action cursor, and the in-memory
-    // registries weren't rolled back — force a fresh create/replay before the
-    // world can be extended again.
-    this.liveSessionId = null;
-    this.appliedActionCount = 0;
-    await this.refreshChainStatus();
-    return ok;
-  }
-
   /**
    * Run an incremental append with full rollback: snapshot the chain AND the
    * in-memory world before `run`, and if it reports an error, revert both so a
    * failed extend can't leave orphaned contracts/accounts or a stale cursor.
-   * Uses a private snapshot so it doesn't clobber the user's manual snapshot.
    */
   async appendIncremental<T extends { error?: string }>(
     run: () => Promise<T>,

@@ -68,10 +68,10 @@ export const api = {
       body: JSON.stringify({ plan, planId, baseSessionId, prompt }),
     }),
 
-  localnet: (action: LocalnetAction, snapshotId?: string) =>
+  localnet: (action: LocalnetAction) =>
     request("/api/localnet", LocalnetActionResponse, {
       method: "POST",
-      body: JSON.stringify({ action, snapshotId }),
+      body: JSON.stringify({ action }),
     }),
 
   sessions: () => request("/api/sessions", SessionListResponse),

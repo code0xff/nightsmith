@@ -121,8 +121,6 @@ export function parseBalanceChange(
 
 const CONTROL_KEYWORDS: Array<{ re: RegExp; kind: ControlAction["kind"] }> = [
   { re: /\b(stop|halt|shutdown|shut down)\b|중지|정지|멈춰/i, kind: "stop" },
-  { re: /\bsnapshot\b|스냅샷/i, kind: "snapshot" },
-  { re: /\brevert\b|되돌려|복원/i, kind: "revert" },
   { re: /\bexport\b|내보내/i, kind: "export" },
   { re: /\bresume\b|이어서|재개/i, kind: "resume" },
 ];
@@ -171,7 +169,7 @@ export function detectIntent(
   }
   if (hasPrevious && hasChange) return "modifyWorld";
   // Append onto the already-running world when the prompt adds a new action and
-  // isn't a modify, a lifecycle control (stop/snapshot/…), or an explicit "create
+  // isn't a modify, a lifecycle control (stop/export/…), or an explicit "create
   // a new world" request.
   if (
     hasPrevious &&

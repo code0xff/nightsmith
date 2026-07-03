@@ -85,8 +85,7 @@ process (it streams logs/state over `ws://localhost:4040/ws`).
 5. Modify and re-run (a change to earlier setup rebuilds the world from
    scratch — deterministic replay), e.g.:
    > Bob의 초기 잔액을 500 USDC로 바꾸고 다시 실행해줘
-6. Use the direct controls (Start / Stop / Snapshot / Revert / Replay /
-   Export) at any time.
+6. Use the direct controls (Start / Stop / Replay / Export) at any time.
 
 ### Prompt examples
 

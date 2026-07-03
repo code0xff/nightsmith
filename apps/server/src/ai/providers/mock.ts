@@ -284,8 +284,6 @@ function controlPlan(prompt: string, running: boolean): Plan {
   const control = parseControl(prompt) ?? { kind: "stop" as const };
   const labels: Record<string, string> = {
     stop: "Stop the localnet",
-    snapshot: "Take an EVM snapshot",
-    revert: "Revert to the last snapshot",
     resume: "Resume the previous session",
     export: "Export the current world as a manifest",
     start: "Start the localnet",

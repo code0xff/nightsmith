@@ -52,7 +52,7 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
     ],
     "assertions": [ { "type": "tokenBalance", "contractId": string, "account": string, "expected": string } ]
   },
-  "control": null | { "kind": "start"|"stop"|"snapshot"|"revert"|"replay"|"resume"|"export" },
+  "control": null | { "kind": "start"|"stop"|"replay"|"resume"|"export" },
   "explanation": null | string,
   "uiPreview": { "title": string, "description": string, "accent": "default"|"warning"|"destructive" }
 }

@@ -27,7 +27,6 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
 
     // Serialize against execution and other control actions (single Anvil owner).
     return runtime.runExclusive(async () => {
-      let snapshotId: string | undefined;
       switch (body.action) {
         case "start":
           await runtime.startLocalnet(defaultNetwork());
@@ -35,18 +34,8 @@ export function registerLocalnetRoutes(app: FastifyInstance, runtime: Runtime): 
         case "stop":
           await runtime.stopLocalnet();
           break;
-        case "snapshot":
-          snapshotId = await runtime.snapshot();
-          break;
-        case "revert":
-          await runtime.revert(body.snapshotId);
-          break;
       }
-      return {
-        ok: true,
-        state: runtime.getState(),
-        ...(snapshotId ? { snapshotId } : {}),
-      };
+      return { ok: true, state: runtime.getState() };
     });
   });
 }

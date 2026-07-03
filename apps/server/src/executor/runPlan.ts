@@ -149,12 +149,6 @@ export async function runPlan(
         case "start":
           await runtime.startLocalnet(defaultNetwork());
           break;
-        case "snapshot":
-          await runtime.snapshot();
-          break;
-        case "revert":
-          await runtime.revert();
-          break;
         case "replay":
         case "resume":
           return runManifest(runtime, manifestToReplay(runtime));
