@@ -339,7 +339,9 @@ export class Runtime {
     this.liveSessionId = null;
     this.appliedActionCount = 0;
     this.walletCache.clear();
-    this.patchLocalnet({ status: "stopped", blockNumber: undefined });
+    // Clear sessionName too — a stopped localnet has no live session, and
+    // patchLocalnet only merges, so it would otherwise linger in the UI.
+    this.patchLocalnet({ status: "stopped", blockNumber: undefined, sessionName: undefined });
   }
 
   async refreshChainStatus(): Promise<void> {
