@@ -55,10 +55,11 @@ async function request<S extends z.ZodTypeAny>(
 }
 
 export const api = {
-  prompt: (prompt: string, sessionId?: string) =>
+  prompt: (prompt: string, sessionId?: string, signal?: AbortSignal) =>
     request("/api/prompt", PromptResponse, {
       method: "POST",
       body: JSON.stringify({ prompt, sessionId }),
+      signal,
     }),
 
   execute: (plan: Plan, planId?: string, baseSessionId?: string) =>

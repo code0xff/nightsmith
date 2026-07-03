@@ -13,22 +13,43 @@ function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** In-flight planning request, so Stop can abort it (and the server-side work). */
+let planController: AbortController | null = null;
+
+/** Cancel an in-progress plan generation (aborts the fetch and the server work). */
+export function cancelPlanning(): void {
+  planController?.abort();
+}
+
 /** Generate a reviewable plan from a prompt (does not execute). */
 export async function submitPrompt(prompt: string): Promise<void> {
   const store = useAppStore.getState();
   if (!prompt.trim() || store.busy) return;
+  const controller = new AbortController();
+  planController = controller;
   store.setBusy(true);
+  store.setPlanning(true);
   try {
     // Pass the live session so the planner sees the previous manifest and can
     // plan a modify/extend rather than a fresh world.
-    const { plan, planId, warnings } = await api.prompt(prompt, store.sessionId ?? undefined);
+    const { plan, planId, warnings } = await api.prompt(
+      prompt,
+      store.sessionId ?? undefined,
+      controller.signal,
+    );
     store.setPlan(plan, planId, warnings);
     toast.success("Plan ready for review", {
       description: warnings.length ? `${plan.summary} — ${warnings.length} warning(s)` : plan.summary,
     });
   } catch (err) {
-    toast.error("Planning failed", { description: describeError(err) });
+    if (err instanceof Error && err.name === "AbortError") {
+      toast("Planning cancelled");
+    } else {
+      toast.error("Planning failed", { description: describeError(err) });
+    }
   } finally {
+    if (planController === controller) planController = null;
+    store.setPlanning(false);
     store.setBusy(false);
   }
 }

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { SendHorizontal, Sparkles } from "lucide-react";
+import { SendHorizontal, Sparkles, Square } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { submitPrompt } from "@/lib/actions";
+import { cancelPlanning, submitPrompt } from "@/lib/actions";
 import { useAppStore } from "@/state/useAppStore";
 
 const EXAMPLES = [
@@ -16,6 +16,7 @@ const EXAMPLES = [
 export function PromptBox() {
   const [value, setValue] = useState("");
   const busy = useAppStore((s) => s.busy);
+  const planning = useAppStore((s) => s.planning);
   const promptResetSignal = useAppStore((s) => s.promptResetSignal);
 
   // Clear the box once an execution completes successfully (signal bumps).
@@ -68,10 +69,17 @@ export function PromptBox() {
           ))}
         </div>
         <div className="flex justify-end">
-          <Button onClick={submit} disabled={busy || !value.trim()}>
-            <SendHorizontal />
-            {busy ? "Planning…" : "Generate plan"}
-          </Button>
+          {planning ? (
+            <Button variant="destructive" onClick={cancelPlanning}>
+              <Square />
+              Stop
+            </Button>
+          ) : (
+            <Button onClick={submit} disabled={busy || !value.trim()}>
+              <SendHorizontal />
+              {busy ? "Working…" : "Generate plan"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

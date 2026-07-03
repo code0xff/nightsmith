@@ -332,7 +332,8 @@ function explainPlan(prompt: string): Plan {
 /** Deterministic, offline planner used for local demos and tests. */
 export const mockProvider: AiProvider = {
   name: "mock",
-  async generate(input: PlanInput): Promise<Plan> {
+  // Deterministic and instant — nothing to cancel, so the signal is ignored.
+  async generate(input: PlanInput, _signal?: AbortSignal): Promise<Plan> {
     const intent = detectIntent(input.prompt, input.previousManifest != null, input.running);
     switch (intent) {
       case "createWorld":

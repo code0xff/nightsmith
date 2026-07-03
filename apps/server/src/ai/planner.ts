@@ -18,11 +18,13 @@ export type PlanLogger = (level: "info" | "warning", message: string) => void;
  *   CLI (if installed) → mock (always).
  * No manual selection — the first available wins, and the rest are fallbacks.
  */
-async function providerChain(): Promise<AiProvider[]> {
+async function providerChain(signal?: AbortSignal): Promise<AiProvider[]> {
   const chain: AiProvider[] = [];
   if (isOpenAiConnected()) chain.push(openaiProvider);
-  if (await isCodexAvailable()) chain.push(codexProvider);
-  if (await isClaudeAvailable()) chain.push(claudeProvider);
+  // Pass the signal so a Stop during the CLI `--version` probes cancels them
+  // instead of blocking behind their timeouts.
+  if (await isCodexAvailable(signal)) chain.push(codexProvider);
+  if (await isClaudeAvailable(signal)) chain.push(claudeProvider);
   chain.push(mockProvider); // always available
   return chain;
 }
@@ -58,16 +60,27 @@ function sanitizeForProvider(input: PlanInput): PlanInput {
 export async function generatePlan(
   input: PlanInput,
   log?: PlanLogger,
+  signal?: AbortSignal,
 ): Promise<{ plan: Plan; provider: string }> {
-  const chain = await providerChain();
+  // Explicit abort checks around every await — a cancel must stop before the
+  // availability probes, before any provider call, and (critically) before the
+  // always-available Mock, which ignores the signal and would otherwise return
+  // a plan the user cancelled.
+  signal?.throwIfAborted();
+  const chain = await providerChain(signal);
+  signal?.throwIfAborted();
   const safeInput = sanitizeForProvider(input);
   let lastError: unknown;
 
   for (const provider of chain) {
+    signal?.throwIfAborted();
     try {
-      const plan = PlanSchema.parse(await provider.generate(safeInput));
+      const plan = PlanSchema.parse(await provider.generate(safeInput, signal));
       return { plan, provider: provider.name };
     } catch (err) {
+      // A cancel must stop the whole chain — never fall through to another
+      // provider (or the Mock) and silently produce a plan the user aborted.
+      if (signal?.aborted) throw err;
       lastError = err;
       log?.("warning", `Provider "${provider.name}" failed: ${errorMessage(err)}`);
     }

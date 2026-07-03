@@ -17,15 +17,18 @@ let availableCache: { value: boolean; checkedAt: number } | null = null;
  * us the binary exists, not that the user is logged in (a login/runtime failure
  * surfaces when we actually invoke it, and the planner falls back).
  */
-export async function isCodexAvailable(): Promise<boolean> {
+export async function isCodexAvailable(signal?: AbortSignal): Promise<boolean> {
   if (availableCache && Date.now() - availableCache.checkedAt < AVAILABILITY_TTL_MS) {
     return availableCache.value;
   }
   let value = false;
   try {
-    await execa("codex", ["--version"], { timeout: 5000 });
+    await execa("codex", ["--version"], { timeout: 5000, cancelSignal: signal });
     value = true;
-  } catch {
+  } catch (err) {
+    // A cancel here isn't "codex is unavailable" — propagate it and leave the
+    // cache untouched instead of poisoning it with a spurious false for 30s.
+    if (signal?.aborted) throw err;
     value = false;
   }
   availableCache = { value, checkedAt: Date.now() };
@@ -39,8 +42,8 @@ export async function isCodexAvailable(): Promise<boolean> {
  */
 export const codexProvider: AiProvider = {
   name: "codex",
-  async generate(input: PlanInput): Promise<Plan> {
-    if (!(await isCodexAvailable())) {
+  async generate(input: PlanInput, signal?: AbortSignal): Promise<Plan> {
+    if (!(await isCodexAvailable(signal))) {
       throw new AppError("Codex CLI not found on PATH", 400);
     }
 
@@ -63,7 +66,7 @@ export const codexProvider: AiProvider = {
           outFile,
           "-",
         ],
-        { input: buildCliPrompt(input), timeout: CODEX_TIMEOUT_MS },
+        { input: buildCliPrompt(input), timeout: CODEX_TIMEOUT_MS, cancelSignal: signal },
       );
       const raw = readFileSync(outFile, "utf8");
       return PlanSchema.parse(extractJsonObject(raw));

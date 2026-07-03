@@ -30,9 +30,17 @@ function buildUserContent(input: PlanInput): string {
   return parts.join("\n\n");
 }
 
-async function callOpenAI(apiKey: string, messages: ChatMessage[]): Promise<string> {
+async function callOpenAI(
+  apiKey: string,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Abort on EITHER our timeout OR an external cancel (the user clicked Stop).
+  // AbortSignal.any also fires immediately if `signal` is already aborted —
+  // which a plain addEventListener would miss.
+  const fetchSignal = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
   let res: Response;
   try {
     res = await fetch(OPENAI_URL, {
@@ -50,10 +58,12 @@ async function callOpenAI(apiKey: string, messages: ChatMessage[]): Promise<stri
         response_format: { type: "json_object" },
         messages,
       }),
-      signal: controller.signal,
+      signal: fetchSignal,
     });
   } catch (err) {
-    // Abort or network error — typed so the planner can fall back.
+    // A user cancel propagates as an abort — surface it as such so the planner
+    // stops the chain instead of treating it as a timeout to fall back from.
+    if (signal?.aborted) throw new AppError("OpenAI request cancelled", 499);
     throw new AppError(
       controller.signal.aborted
         ? `OpenAI request timed out after ${REQUEST_TIMEOUT_MS}ms`
@@ -91,7 +101,7 @@ function parsePlan(raw: string): Plan {
  */
 export const openaiProvider: AiProvider = {
   name: "openai",
-  async generate(input: PlanInput): Promise<Plan> {
+  async generate(input: PlanInput, signal?: AbortSignal): Promise<Plan> {
     const apiKey = resolveOpenAiKey();
     if (!apiKey) {
       throw new AppError(
@@ -105,7 +115,7 @@ export const openaiProvider: AiProvider = {
       { role: "user", content: buildUserContent(input) },
     ];
 
-    const first = await callOpenAI(apiKey, messages);
+    const first = await callOpenAI(apiKey, messages, signal);
     try {
       return parsePlan(first);
     } catch (err) {
@@ -115,7 +125,7 @@ export const openaiProvider: AiProvider = {
         role: "user",
         content: `That did not match the required schema (${errorMessage(err)}). Reply again with ONLY a corrected JSON object that matches the contract exactly.`,
       });
-      const second = await callOpenAI(apiKey, messages);
+      const second = await callOpenAI(apiKey, messages, signal);
       return parsePlan(second);
     }
   },

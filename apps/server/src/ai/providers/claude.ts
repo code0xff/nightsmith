@@ -32,15 +32,18 @@ function tryParseEnvelope(stdout: string): ClaudePrintResult | null {
  * login/runtime failure surfaces when we actually invoke it, and the planner
  * falls back).
  */
-export async function isClaudeAvailable(): Promise<boolean> {
+export async function isClaudeAvailable(signal?: AbortSignal): Promise<boolean> {
   if (availableCache && Date.now() - availableCache.checkedAt < AVAILABILITY_TTL_MS) {
     return availableCache.value;
   }
   let value = false;
   try {
-    await execa("claude", ["--version"], { timeout: 5000 });
+    await execa("claude", ["--version"], { timeout: 5000, cancelSignal: signal });
     value = true;
-  } catch {
+  } catch (err) {
+    // A cancel here isn't "claude is unavailable" — propagate it and leave the
+    // cache untouched instead of poisoning it with a spurious false for 30s.
+    if (signal?.aborted) throw err;
     value = false;
   }
   availableCache = { value, checkedAt: Date.now() };
@@ -57,8 +60,8 @@ export async function isClaudeAvailable(): Promise<boolean> {
  */
 export const claudeProvider: AiProvider = {
   name: "claude",
-  async generate(input: PlanInput): Promise<Plan> {
-    if (!(await isClaudeAvailable())) {
+  async generate(input: PlanInput, signal?: AbortSignal): Promise<Plan> {
+    if (!(await isClaudeAvailable(signal))) {
       throw new AppError("Claude Code CLI not found on PATH", 400);
     }
 
@@ -82,6 +85,7 @@ export const claudeProvider: AiProvider = {
         {
           cwd: work,
           timeout: CLAUDE_TIMEOUT_MS,
+          cancelSignal: signal, // kill the subprocess if planning is cancelled
           // Don't leak the server's full environment (other API keys, RPC
           // URLs, etc.) into the subprocess — Claude Code's default system
           // prompt includes an "env info" section built from its environment.

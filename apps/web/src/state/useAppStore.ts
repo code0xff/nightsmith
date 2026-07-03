@@ -26,6 +26,8 @@ interface AppState {
   /** Bumped after a successful execution so the prompt box can clear itself. */
   promptResetSignal: number;
   busy: boolean;
+  /** True only while a plan is being generated (cancellable), not during execute. */
+  planning: boolean;
   autoScroll: boolean;
   levelFilter: Set<LogLevel>;
   ai: AiStatus | null;
@@ -40,6 +42,7 @@ interface AppState {
   setSessionId: (id: string | null) => void;
   clearPrompt: () => void;
   setBusy: (v: boolean) => void;
+  setPlanning: (v: boolean) => void;
   setAutoScroll: (v: boolean) => void;
   toggleLevel: (level: LogLevel) => void;
   clearLogs: () => void;
@@ -55,6 +58,7 @@ export const useAppStore = create<AppState>((set) => ({
   sessionId: null,
   promptResetSignal: 0,
   busy: false,
+  planning: false,
   autoScroll: true,
   levelFilter: new Set(ALL_LEVELS),
   ai: null,
@@ -88,6 +92,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSessionId: (sessionId) => set({ sessionId }),
   clearPrompt: () => set((s) => ({ promptResetSignal: s.promptResetSignal + 1 })),
   setBusy: (v) => set({ busy: v }),
+  setPlanning: (v) => set({ planning: v }),
   setAutoScroll: (v) => set({ autoScroll: v }),
   toggleLevel: (level) =>
     set((s) => {

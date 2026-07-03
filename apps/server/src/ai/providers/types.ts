@@ -17,5 +17,6 @@ export interface PlanInput {
  */
 export interface AiProvider {
   readonly name: string;
-  generate(input: PlanInput): Promise<Plan>;
+  /** `signal` cancels the underlying provider call (HTTP request / CLI subprocess). */
+  generate(input: PlanInput, signal?: AbortSignal): Promise<Plan>;
 }
