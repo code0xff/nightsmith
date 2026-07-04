@@ -11,11 +11,18 @@ import {
 /**
  * A contract argument value (constructor or function call). JSON-friendly:
  * integers are passed as decimal strings, addresses/bytes as 0x strings, plus
- * bool and arrays. Tuples/structs are out of scope for now.
+ * bool, arrays, and objects. A tuple/struct is an object keyed by field name
+ * (or an ordered array); the executor coerces it against the ABI components.
  */
-export type ArgValue = string | number | boolean | ArgValue[];
+export type ArgValue = string | number | boolean | ArgValue[] | { [key: string]: ArgValue };
 export const ArgValue: z.ZodType<ArgValue> = z.lazy(() =>
-  z.union([z.string(), z.number(), z.boolean(), z.array(ArgValue)]),
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(ArgValue),
+    z.record(z.string(), ArgValue),
+  ]),
 );
 
 /**
