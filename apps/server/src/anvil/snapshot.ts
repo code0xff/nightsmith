@@ -65,3 +65,13 @@ export async function setBlockTimestampInterval(
 ): Promise<void> {
   await raw(client)({ method: "anvil_setBlockTimestampInterval", params: [seconds] });
 }
+
+/** Let Anvil sign txs for an arbitrary address (unsigned; test-only). */
+export async function impersonate(client: PublicClient, address: Hex): Promise<void> {
+  await raw(client)({ method: "anvil_impersonateAccount", params: [address] });
+}
+
+/** Stop impersonating an address. */
+export async function stopImpersonate(client: PublicClient, address: Hex): Promise<void> {
+  await raw(client)({ method: "anvil_stopImpersonatingAccount", params: [address] });
+}

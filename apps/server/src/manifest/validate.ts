@@ -11,13 +11,17 @@ export function validateManifest(input: unknown): WorldManifest {
 
   // Canonicalize literal-address refs to lowercase so the same address in
   // different casings can't desync recipient vs. assertion balances.
+  const lower = (s: string) => s.toLowerCase();
   for (const action of manifest.actions) {
     if ((action.type === "mint" || action.type === "transfer") && isAddress(action.to)) {
-      action.to = action.to.toLowerCase();
+      action.to = lower(action.to);
     }
-    if (action.type === "approve" && isAddress(action.spender)) {
-      action.spender = action.spender.toLowerCase();
+    if (action.type === "transfer" && isAddress(action.from)) action.from = lower(action.from);
+    if (action.type === "approve") {
+      if (isAddress(action.spender)) action.spender = lower(action.spender);
+      if (isAddress(action.owner)) action.owner = lower(action.owner);
     }
+    if (action.type === "call" && isAddress(action.from)) action.from = lower(action.from);
   }
   for (const assertion of manifest.assertions) {
     if (
@@ -55,14 +59,14 @@ export function validateManifest(input: unknown): WorldManifest {
     if (action.type === "deployContract") requireAccount(action.deployer, where);
     if (action.type === "mint") requireRecipient(action.to, where);
     if (action.type === "transfer") {
-      requireAccount(action.from, where); // sender must be a signable named account
+      requireRecipient(action.from, where); // named account (signed) or address (impersonated)
       requireRecipient(action.to, where);
     }
     if (action.type === "approve") {
-      requireAccount(action.owner, where); // owner signs the approval
+      requireRecipient(action.owner, where); // named account (signed) or address (impersonated)
       requireRecipient(action.spender, where);
     }
-    if (action.type === "call") requireAccount(action.from, where); // signer
+    if (action.type === "call") requireRecipient(action.from, where); // signer or impersonated address
   }
 
   for (const [i, assertion] of manifest.assertions.entries()) {

@@ -35,6 +35,7 @@ function redactSecrets(line: string): string {
 import {
   accountAtIndex,
   makeChain,
+  makeImpersonatingWalletClient,
   makePublicClient,
   makeWalletClient,
   privateKeyOf,
@@ -209,6 +210,11 @@ export class Runtime {
       this.walletCache.set(name, client);
     }
     return client;
+  }
+
+  /** A wallet client for a bare address (impersonated; sends via the node). */
+  impersonatingWalletFor(address: `0x${string}`): WalletClient {
+    return makeImpersonatingWalletClient(this.getChain(), this.rpcUrl!, address);
   }
 
   // ── account / contract registry ──────────────────────────────────────────────

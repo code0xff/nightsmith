@@ -1,6 +1,7 @@
 import type { Abi } from "viem";
 import type { WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
+import { runWrite } from "./sender.js";
 import { fromTokenUnits, toTokenUnits, toTokenUnitsOrMax } from "./units.js";
 
 /** Read an account's token balance (base units). */
@@ -148,25 +149,20 @@ export async function approve(
   amount: string,
 ): Promise<void> {
   const contract = runtime.getContract(contractId);
-  const owner = runtime.getAccount(ownerName);
   const spenderAddress = runtime.resolveAddress(spenderName);
-  const wallet = runtime.walletFor(ownerName);
   const human = amount === "max" ? "unlimited" : amount;
-
-  const hash = await wallet.writeContract({
+  // `ownerName` may be a literal address → impersonated by runWrite.
+  const { hash, receipt, from } = await runWrite(runtime, ownerName, {
     address: contract.address,
     abi: contract.abi,
     functionName: "approve",
     args: [spenderAddress, toTokenUnitsOrMax(amount, contract.decimals)],
-    account: owner.account,
-    chain: runtime.getChain(),
   });
-  const receipt = await runtime.getPublicClient().waitForTransactionReceipt({ hash });
 
   runtime.addTransaction({
     hash,
     ts: new Date().toISOString(),
-    from: owner.address,
+    from,
     to: contract.address,
     fn: "approve",
     status: receipt.status === "success" ? "success" : "reverted",
@@ -192,24 +188,19 @@ export async function transfer(
   amount: string,
 ): Promise<void> {
   const contract = runtime.getContract(contractId);
-  const from = runtime.getAccount(fromName);
   const toAddress = runtime.resolveAddress(toName);
-  const wallet = runtime.walletFor(fromName);
-
-  const hash = await wallet.writeContract({
+  // `fromName` may be a literal address → impersonated by runWrite.
+  const { hash, receipt, from } = await runWrite(runtime, fromName, {
     address: contract.address,
     abi: contract.abi,
     functionName: "transfer",
     args: [toAddress, toTokenUnits(amount, contract.decimals)],
-    account: from.account,
-    chain: runtime.getChain(),
   });
-  const receipt = await runtime.getPublicClient().waitForTransactionReceipt({ hash });
 
   runtime.addTransaction({
     hash,
     ts: new Date().toISOString(),
-    from: from.address,
+    from,
     to: contract.address,
     fn: "transfer",
     status: receipt.status === "success" ? "success" : "reverted",

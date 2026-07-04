@@ -2,6 +2,7 @@ import type { Abi, AbiFunction } from "viem";
 import type { ArgValue, CallAction } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { coerceArgs } from "./args.js";
+import { runWrite } from "./sender.js";
 import { toWei } from "./units.js";
 
 /** Find a single (non-overloaded) function by name in an ABI. */
@@ -14,29 +15,25 @@ function abiFunction(abi: Abi, name: string): AbiFunction {
   return fns[0]!;
 }
 
-/** Execute a state-changing function call from a named signer. */
+/** Execute a state-changing function call. `from` may be a named signer or a
+ *  literal address (impersonated). */
 export async function callFunction(runtime: Runtime, action: CallAction): Promise<void> {
   const contract = runtime.getContract(action.contractId);
-  const caller = runtime.getAccount(action.from);
-  const wallet = runtime.walletFor(action.from);
   const fn = abiFunction(contract.abi, action.function);
   const args = coerceArgs(fn.inputs, action.args);
 
-  const hash = await wallet.writeContract({
+  const { hash, receipt, from } = await runWrite(runtime, action.from, {
     address: contract.address,
     abi: contract.abi,
     functionName: action.function,
     args,
-    account: caller.account,
-    chain: runtime.getChain(),
     ...(action.value ? { value: toWei(action.value) } : {}),
   });
-  const receipt = await runtime.getPublicClient().waitForTransactionReceipt({ hash });
 
   runtime.addTransaction({
     hash,
     ts: new Date().toISOString(),
-    from: caller.address,
+    from,
     to: contract.address,
     fn: action.function,
     status: receipt.status === "success" ? "success" : "reverted",

@@ -113,8 +113,8 @@ export const MintAction = z.object({
 export const TransferAction = z.object({
   type: z.literal("transfer"),
   contractId: Identifier,
-  /** Sender must be a named Anvil account (Nightsmith can only sign for those). */
-  from: AccountName,
+  /** Sender: a named account (signed) or a literal 0x address (impersonated). */
+  from: AccountRef,
   /** Recipient: a named account or a literal 0x address. */
   to: AccountRef,
   amount: DecimalAmount,
@@ -132,8 +132,8 @@ export type TokenAmountOrMax = z.infer<typeof TokenAmountOrMax>;
 export const ApproveAction = z.object({
   type: z.literal("approve"),
   contractId: Identifier,
-  /** Token owner granting the allowance — must be a signable named account. */
-  owner: AccountName,
+  /** Token owner: a named account (signed) or a literal 0x address (impersonated). */
+  owner: AccountRef,
   /** Spender being approved: a named account or a literal 0x address. */
   spender: AccountRef,
   /** Allowance in human units, or "max" for an unlimited approval. */
@@ -147,8 +147,8 @@ export const CallAction = z.object({
   /** Function name in the contract's ABI. */
   function: z.string().min(1),
   args: z.array(ArgValue).default([]),
-  /** Signer — must be a named Anvil account. */
-  from: AccountName,
+  /** Signer: a named account (signed) or a literal 0x address (impersonated). */
+  from: AccountRef,
   /** Optional ETH value to send with the call (ether, decimal string). */
   value: EtherAmount.optional(),
 });

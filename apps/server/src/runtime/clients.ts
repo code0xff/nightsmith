@@ -34,6 +34,19 @@ export function makeWalletClient(
 }
 
 /**
+ * A wallet client bound to a bare address (a JSON-RPC account, no local key).
+ * Txs are sent via the node (eth_sendTransaction), which Anvil signs while the
+ * address is impersonated. For act-as-arbitrary-address / whale testing.
+ */
+export function makeImpersonatingWalletClient(
+  chain: Chain,
+  rpcUrl: string,
+  address: `0x${string}`,
+): WalletClient {
+  return createWalletClient({ account: address, chain, transport: http(rpcUrl) });
+}
+
+/**
  * Derive a deterministic account from the Anvil mnemonic by index. These are
  * public test keys — Nightsmith never handles real private keys.
  */
