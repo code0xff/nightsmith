@@ -22,6 +22,16 @@ export const DecimalAmount = z
   .regex(/^\d+(\.\d+)?$/, "must be a non-negative decimal string");
 export type DecimalAmount = z.infer<typeof DecimalAmount>;
 
+/**
+ * A non-negative ether amount with at most 18 fractional digits (wei
+ * precision), so it always parses via viem's parseEther. Used for native-ETH
+ * fields; a more precise value is a clean validation error, not a runtime throw.
+ */
+export const EtherAmount = z
+  .string()
+  .regex(/^\d+(\.\d{1,18})?$/, "must be an ether amount with at most 18 decimals");
+export type EtherAmount = z.infer<typeof EtherAmount>;
+
 /** A short, stable identifier (account name, contract id). */
 export const Identifier = z
   .string()

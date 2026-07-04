@@ -3,6 +3,7 @@ import {
   AccountName,
   AccountRef,
   DecimalAmount,
+  EtherAmount,
   HexString,
   Identifier,
 } from "./types.js";
@@ -52,7 +53,7 @@ export const AccountDef = z.object({
   /** Index into Anvil's deterministic dev accounts (0-9). These are public test keys. */
   addressIndex: z.number().int().min(0).max(9),
   /** Local ETH to ensure the account holds, as a decimal ether string. */
-  fundEth: DecimalAmount.default("0"),
+  fundEth: EtherAmount.default("0"),
 });
 export type AccountDef = z.infer<typeof AccountDef>;
 
@@ -149,7 +150,7 @@ export const CallAction = z.object({
   /** Signer — must be a named Anvil account. */
   from: AccountName,
   /** Optional ETH value to send with the call (ether, decimal string). */
-  value: DecimalAmount.optional(),
+  value: EtherAmount.optional(),
 });
 export type CallAction = z.infer<typeof CallAction>;
 
@@ -224,7 +225,7 @@ export const EthBalanceAssertion = z.object({
   /** A named account or a literal 0x address. */
   account: AccountRef,
   /** Expected native balance in ether (decimal string). */
-  expected: DecimalAmount,
+  expected: EtherAmount,
   description: z.string().optional(),
 });
 
