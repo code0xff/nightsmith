@@ -359,6 +359,7 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
         400,
       );
     }
+    hardenUploadedProject(root);
     return finish(root, {}, input);
   });
 }
@@ -431,6 +432,45 @@ function assertNoEscape(dest: string): void {
         }
       } else if (e.isDirectory()) {
         stack.push(full);
+      }
+    }
+  }
+}
+
+/**
+ * Neutralize code-execution vectors in an UNTRUSTED uploaded project before we
+ * run `forge build` on it. `forge build` can be steered into executing an
+ * arbitrary binary as the server user via a compiler path — from foundry.toml
+ * (`solc = "./evil"`) or from a project `.env` (`FOUNDRY_SOLC=./evil`). We:
+ *   1. reject a foundry.toml that selects a compiler by filesystem path (a bare
+ *      semver like "0.8.24" is fine — svm downloads a trusted solc), and
+ *   2. delete any `.env` files so forge's dotenv loading can't inject config.
+ * FOUNDRY_OUT/CACHE forcing only confines writes; this confines execution.
+ */
+function hardenUploadedProject(root: string): void {
+  const toml = readFileSync(join(root, "foundry.toml"), "utf8");
+  const re = /^\s*(solc|solc_version)\s*=\s*["']?([^"'\n#]+)["']?/gim;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(toml))) {
+    const value = m[2]!.trim();
+    if (!/^v?\d+\.\d+\.\d+$/.test(value)) {
+      throw new AppError(
+        `Uploaded foundry.toml selects a compiler by path (${m[1]} = "${value}"), which is not allowed. Use a version like "0.8.24".`,
+        400,
+      );
+    }
+  }
+  // Strip `.env` / `.env.*` anywhere in the tree (forge loads dotenv from cwd).
+  const skip = new Set(["out", "cache", ".git", "node_modules"]);
+  const stack = [root];
+  while (stack.length > 0) {
+    const dir = stack.pop()!;
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) {
+        if (!skip.has(e.name)) stack.push(full);
+      } else if (/^\.env(\.|$)/.test(e.name)) {
+        rmSync(full, { force: true });
       }
     }
   }
