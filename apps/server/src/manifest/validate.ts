@@ -47,7 +47,8 @@ export function validateManifest(input: unknown): WorldManifest {
 
   for (const [i, action] of manifest.actions.entries()) {
     const where = `actions[${i}] (${action.type})`;
-    requireContract(action.contractId, where);
+    // Most actions target a contract; `mine` (chain control) does not.
+    if ("contractId" in action) requireContract(action.contractId, where);
     if (action.type === "deployContract") requireAccount(action.deployer, where);
     if (action.type === "mint") requireRecipient(action.to, where);
     if (action.type === "transfer") {

@@ -146,7 +146,7 @@ export function simulateBalances(
   const add = (ref: string, delta: bigint) =>
     balances.set(ref, (balances.get(ref) ?? 0n) + delta);
   for (const action of manifest.actions) {
-    if (action.contractId !== contract.id) continue;
+    if (!("contractId" in action) || action.contractId !== contract.id) continue;
     if (action.type === "mint") add(action.to, parseUnits(action.amount, decimals));
     else if (action.type === "transfer") {
       const amt = parseUnits(action.amount, decimals);

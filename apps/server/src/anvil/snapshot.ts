@@ -37,3 +37,13 @@ export async function setBalance(
     params: [address, numberToHex(weiBalance)],
   });
 }
+
+/** Advance the next block's timestamp by `seconds` (test-only). */
+export async function increaseTime(client: PublicClient, seconds: number): Promise<void> {
+  await raw(client)({ method: "evm_increaseTime", params: [seconds] });
+}
+
+/** Mine `blocks` block(s) immediately (test-only). */
+export async function mineBlocks(client: PublicClient, blocks: number): Promise<void> {
+  await raw(client)({ method: "anvil_mine", params: [numberToHex(blocks)] });
+}

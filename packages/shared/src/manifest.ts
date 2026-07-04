@@ -153,11 +153,27 @@ export const CallAction = z.object({
 });
 export type CallAction = z.infer<typeof CallAction>;
 
+/**
+ * Advance the chain: optionally jump the block timestamp forward by
+ * `secondsDelta`, then mine `blocks` block(s). Enables time-dependent tests
+ * (vesting, timelocks, cooldowns). References no contract.
+ */
+export const MineAction = z.object({
+  type: z.literal("mine"),
+  /** Number of blocks to mine (default 1). Capped so a plan can't ask Anvil to
+   *  produce a huge number of blocks and tie up the localnet. */
+  blocks: z.number().int().min(1).max(10_000).default(1),
+  /** Seconds to advance the block timestamp before mining (default 0). */
+  secondsDelta: z.number().int().min(0).default(0),
+});
+export type MineAction = z.infer<typeof MineAction>;
+
 export const Action = z.discriminatedUnion("type", [
   DeployContractAction,
   MintAction,
   TransferAction,
   ApproveAction,
+  MineAction,
   CallAction,
 ]);
 export type Action = z.infer<typeof Action>;

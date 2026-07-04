@@ -1,5 +1,6 @@
-import type { Action, WorldManifest } from "@nightsmith/shared";
+import type { Action, MineAction, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
+import { increaseTime, mineBlocks } from "../anvil/snapshot.js";
 import { callFunction } from "./calls.js";
 import { deployArtifact, deployMockErc20 } from "./contracts.js";
 import { approve, mint, refreshAllTokenBalances, transfer } from "./tokens.js";
@@ -15,9 +16,24 @@ export function describeAction(action: Action): string {
       return `Transfer ${action.amount}: ${action.from} → ${action.to} (${action.contractId})`;
     case "approve":
       return `Approve ${action.amount === "max" ? "unlimited" : action.amount}: ${action.owner} → ${action.spender} (${action.contractId})`;
+    case "mine":
+      return `Mine ${action.blocks} block${action.blocks === 1 ? "" : "s"}${action.secondsDelta ? `, +${action.secondsDelta}s` : ""}`;
     case "call":
       return `Call ${action.contractId}.${action.function}(${action.args.length ? "…" : ""}) by ${action.from}`;
   }
+}
+
+/** Advance time and/or mine blocks against the running Anvil. */
+async function runMine(runtime: Runtime, action: MineAction): Promise<void> {
+  const client = runtime.getPublicClient();
+  if (action.secondsDelta > 0) await increaseTime(client, action.secondsDelta);
+  await mineBlocks(client, action.blocks);
+  await runtime.refreshChainStatus();
+  runtime.log(
+    "success",
+    `Mined ${action.blocks} block${action.blocks === 1 ? "" : "s"}${action.secondsDelta ? ` (+${action.secondsDelta}s)` : ""}`,
+    "executor",
+  );
 }
 
 async function runSingleAction(
@@ -49,6 +65,9 @@ async function runSingleAction(
       return;
     case "approve":
       await approve(runtime, action.contractId, action.owner, action.spender, action.amount);
+      return;
+    case "mine":
+      await runMine(runtime, action);
       return;
     case "call":
       await callFunction(runtime, action);

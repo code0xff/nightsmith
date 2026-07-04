@@ -49,7 +49,8 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
       { "type": "deployContract", "contractId": string, "deployer": string } |
       { "type": "mint", "contractId": string, "to": string, "amount": string } |
       { "type": "transfer", "contractId": string, "from": string, "to": string, "amount": string } |
-      { "type": "approve", "contractId": string, "owner": string, "spender": string, "amount": string | "max" }
+      { "type": "approve", "contractId": string, "owner": string, "spender": string, "amount": string | "max" } |
+      { "type": "mine", "blocks"?: number, "secondsDelta"?: number }
     ],
     "assertions": [
       { "type": "tokenBalance", "contractId": string, "account": string, "expected": string } |
@@ -64,6 +65,8 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
 Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest.
 
 Native ETH: each account's "fundEth" is its STARTING ETH balance, a decimal ether string. Use "0" to leave Anvil's default (~10000 ETH, so the account still holds gas). When the user asks to start an account with a specific amount of ETH (e.g. "Alice starts with 100 ETH", "give Bob 100 ETH"), set that account's "fundEth" to the exact amount ("100") — a non-zero value sets the balance absolutely (it may raise or lower it). Do NOT add a mint/transfer action for native ETH; funding is expressed only through "fundEth". There is no assertion type for native ETH balances. For createWorld/modifyWorld/extendWorld/runScenario set "manifest" and leave control/explanation null. For extendWorld the manifest must be the previous one with new actions appended at the end (prior actions unchanged). For control set "control" only. For explain set "explanation" only.
+
+Time / blocks: for time-dependent tests (vesting, timelocks, cooldowns) use a "mine" action. "advance time by 1 day" → { "type":"mine", "secondsDelta":86400 } (mines 1 block so the new timestamp takes effect); "mine 5 blocks" → { "type":"mine", "blocks":5 }. secondsDelta is whole seconds; it references no contract.
 
 ERC20 approvals: for "X approves Y for Z tokens" use an "approve" action where "owner" is X (a named account — it signs) and "spender" is Y (a named account or 0x address). "amount" is a decimal string, or the literal "max" for an unlimited/infinite approval (e.g. "approve Max", "unlimited approval"). Verify an approval with an "allowance" assertion (owner, spender, expected — expected may also be "max"). Do NOT model an approval as a transfer; it moves no tokens.
 

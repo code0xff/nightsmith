@@ -34,6 +34,8 @@ function describeAction(a: Action): string {
       return `Transfer ${a.amount} ${a.contractId}: ${a.from} → ${a.to}`;
     case "approve":
       return `Approve ${a.amount === "max" ? "unlimited" : a.amount} ${a.contractId}: ${a.owner} → ${a.spender}`;
+    case "mine":
+      return `Mine ${a.blocks} block(s)${a.secondsDelta ? ` (+${a.secondsDelta}s)` : ""}`;
     case "call":
       return `Call ${a.contractId}.${a.function}() by ${a.from}`;
   }

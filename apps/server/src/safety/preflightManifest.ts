@@ -67,6 +67,7 @@ function findFunctions(abi: AbiItem[], name: string): AbiItem[] {
 }
 
 function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnings: string[]): void {
+  if (!("contractId" in action)) return; // chain-control actions (mine) target no contract
   const entry = contracts.get(action.contractId);
   if (!entry) return; // unknown contract is caught by validateManifest already
   const abi = entry.abi;
