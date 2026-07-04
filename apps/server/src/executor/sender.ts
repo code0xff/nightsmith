@@ -50,18 +50,23 @@ export async function runWrite(
 
   if (isAddress(senderRef)) {
     await impersonate(client, senderRef);
-    // Impersonation must not perturb the address's own ETH: top up for gas if
-    // needed, then always restore the pre-write balance. So an ethBalance
-    // assertion on an impersonated address stays deterministic and unaffected by
-    // the (test-only) gas we lent it.
+    // If the address can't cover gas, lend it some — but only to subsidize GAS,
+    // never to alter its observable ETH. Afterward, restore to preBalance minus
+    // any legitimate `value` it sent (so a payable call's ETH stays spent while
+    // the gas subsidy is invisible). Addresses that can already pay keep their
+    // real (deterministic) gas+value cost.
     const preBalance = await client.getBalance({ address: senderRef });
+    const subsidized = preBalance < MIN_GAS;
     try {
-      if (preBalance < MIN_GAS) await setBalance(client, senderRef, preBalance + GAS_TOPUP);
+      if (subsidized) await setBalance(client, senderRef, preBalance + GAS_TOPUP);
       const hash = await write(runtime.impersonatingWalletFor(senderRef), senderRef);
       const receipt = await client.waitForTransactionReceipt({ hash });
       return { hash, receipt, from: senderRef };
     } finally {
-      await setBalance(client, senderRef, preBalance);
+      if (subsidized) {
+        const value = params.value ?? 0n;
+        await setBalance(client, senderRef, preBalance > value ? preBalance - value : 0n);
+      }
       await stopImpersonate(client, senderRef);
     }
   }
