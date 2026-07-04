@@ -145,6 +145,15 @@ export async function deployArtifact(
     | undefined;
   const coerced = coerceArgs(ctor?.inputs ?? [], args);
 
+  // Unlinked creation bytecode keeps `__$…$__` library placeholders (an
+  // underscore is never valid hex). Reject with a clear message instead of
+  // letting viem fail on malformed bytecode — library linking isn't supported.
+  if (def.bytecode.includes("_")) {
+    throw new Error(
+      `Cannot deploy "${def.id}": its bytecode has unlinked external-library placeholders. Library linking is not supported yet.`,
+    );
+  }
+
   const hash = await wallet.deployContract({
     abi,
     bytecode: def.bytecode as `0x${string}`,

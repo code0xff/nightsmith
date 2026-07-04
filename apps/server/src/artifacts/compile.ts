@@ -170,17 +170,43 @@ interface Extracted {
   natspec: UploadedArtifact["natspec"];
 }
 
+/** Collect library names from a forge artifact's linkReferences map. */
+function linkedLibraryNames(
+  linkReferences?: Record<string, Record<string, unknown>>,
+): string[] {
+  if (!linkReferences) return [];
+  const names = new Set<string>();
+  for (const file of Object.values(linkReferences)) {
+    for (const lib of Object.keys(file)) names.add(lib);
+  }
+  return [...names];
+}
+
 /** Read forge's slim artifact JSON → abi + creation bytecode + NatSpec. */
 function extractFromArtifact(jsonPath: string): Extracted {
   const json = JSON.parse(readFileSync(jsonPath, "utf8")) as {
     abi?: unknown;
-    bytecode?: { object?: string } | string;
+    bytecode?: { object?: string; linkReferences?: Record<string, Record<string, unknown>> } | string;
     userdoc?: Record<string, unknown>;
     devdoc?: Record<string, unknown>;
   };
   const abi = json.abi as UploadedArtifact["abi"] | undefined;
+  const bytecodeObj = typeof json.bytecode === "object" ? json.bytecode : undefined;
   const bytecode =
     typeof json.bytecode === "string" ? json.bytecode : json.bytecode?.object;
+  // Unlinked creation bytecode carries `__$…$__` library placeholders — never
+  // valid hex, so any `_` means the contract needs external-library linking,
+  // which we don't do yet. Fail early with the library names instead of letting
+  // the deploy revert cryptically on invalid bytecode.
+  if (typeof bytecode === "string" && bytecode.includes("_")) {
+    const libs = linkedLibraryNames(bytecodeObj?.linkReferences);
+    throw new AppError(
+      `This contract must be linked with ${libs.length > 1 ? "external libraries" : "an external library"}${
+        libs.length ? ` (${libs.join(", ")})` : ""
+      } before deployment, which Nightsmith doesn't support yet. Inline the library (make its functions internal) or deploy a version without external libraries.`,
+      400,
+    );
+  }
   if (!Array.isArray(abi) || abi.length === 0) {
     throw new AppError("Compiled artifact has no ABI.", 400);
   }
