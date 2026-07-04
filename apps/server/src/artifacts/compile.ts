@@ -9,13 +9,18 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type { CompileArtifactRequest, UploadedArtifact } from "@nightsmith/shared";
 import { locateForge } from "../anvil/locate.js";
 import { AppError } from "../utils/errors.js";
 import { dataDir, ensureDir } from "../utils/paths.js";
 
 const FORGE_TIMEOUT_MS = 300_000; // first compile may download a solc via svm
+
+// Zip upload limits (defense against zip bombs / disk exhaustion).
+const MAX_ZIP_BYTES = 25 * 1024 * 1024; // decoded archive
+const MAX_UNZIPPED_BYTES = 200 * 1024 * 1024; // total uncompressed
+const MAX_ZIP_ENTRIES = 4000;
 
 // ── forge availability (cached, mirrors anvil/preflight) ─────────────────────
 
@@ -45,33 +50,29 @@ async function assertForgeInstalled(): Promise<void> {
 
 // ── forge invocations ────────────────────────────────────────────────────────
 
-/** Run `forge build` at a project root; throw a clean AppError with the
- *  compiler diagnostics (not a stack trace) on failure. */
-async function forgeBuild(root: string): Promise<void> {
+/**
+ * Run `forge build` at a project root, writing artifacts/cache to the
+ * caller-controlled `outDir`/`cacheDir`. Forcing these via env (which overrides
+ * the project's foundry.toml in Foundry's precedence) confines forge's writes to
+ * our sandbox — an untrusted uploaded `foundry.toml` can't redirect `out`/
+ * `cache_path` to an arbitrary host location. Throws a clean AppError with the
+ * compiler diagnostics (not a stack trace) on failure.
+ */
+async function forgeBuild(root: string, outDir: string, cacheDir: string): Promise<void> {
   const result = await execa(
     locateForge(),
     ["build", "--root", root, "--extra-output", "userdoc", "devdoc"],
-    { timeout: FORGE_TIMEOUT_MS, reject: false, cwd: root },
+    {
+      timeout: FORGE_TIMEOUT_MS,
+      reject: false,
+      cwd: root,
+      env: { FOUNDRY_OUT: outDir, FOUNDRY_CACHE_PATH: cacheDir },
+    },
   );
   if (result.exitCode !== 0) {
     const diagnostics = (result.stderr || result.stdout || "forge build failed").trim();
     throw new AppError(`Compilation failed:\n${diagnostics}`, 400);
   }
-}
-
-/** Resolve the project's real `out` dir (honors a custom foundry.toml). */
-async function resolveOutDir(root: string): Promise<string> {
-  try {
-    const { stdout } = await execa(locateForge(), ["config", "--root", root, "--json"], {
-      timeout: 30_000,
-      cwd: root,
-    });
-    const cfg = JSON.parse(stdout) as { out?: string };
-    if (cfg.out && typeof cfg.out === "string") return join(root, cfg.out);
-  } catch {
-    // fall through to the default
-  }
-  return join(root, "out");
 }
 
 // ── artifact discovery / extraction ──────────────────────────────────────────
@@ -271,22 +272,29 @@ async function withTempProject<T>(fn: (tmp: string) => Promise<T>): Promise<T> {
   }
 }
 
-/** Build the (already-scaffolded or real) project at `root`, extract, package. */
+/** Build the (already-scaffolded or real) project at `root`, extract, package.
+ *  Artifacts/cache go to a private scratch dir (never the user's project dir),
+ *  cleaned up afterward. */
 async function finish(
   root: string,
   target: { fileBasename?: string; sourceText?: string },
   input: CompileArtifactRequest,
 ): Promise<UploadedArtifact> {
-  await forgeBuild(root);
-  const outDir = await resolveOutDir(root);
-  const found = locateArtifact(outDir, {
-    fileBasename: target.fileBasename,
-    contractName: input.contractName,
-  });
-  const { abi, bytecode, natspec } = extractFromArtifact(found.jsonPath);
-  const source = target.sourceText ?? findSourceText(root, found.sourceFile);
-  const name = (input.name ?? found.contractName).trim();
-  return { name, abi, bytecode, natspec, source };
+  const scratch = makeTempDir();
+  try {
+    const outDir = join(scratch, "out");
+    await forgeBuild(root, outDir, join(scratch, "cache"));
+    const found = locateArtifact(outDir, {
+      fileBasename: target.fileBasename,
+      contractName: input.contractName,
+    });
+    const { abi, bytecode, natspec } = extractFromArtifact(found.jsonPath);
+    const source = target.sourceText ?? findSourceText(root, found.sourceFile);
+    const name = (input.name ?? found.contractName).trim();
+    return { name, abi, bytecode, natspec, source };
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedArtifact> {
@@ -323,10 +331,14 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
   }
   const buf = Buffer.from(input.zipBase64!, "base64");
   if (buf.length === 0) throw new AppError("zip is empty or not valid base64.", 400);
+  if (buf.length > MAX_ZIP_BYTES) {
+    throw new AppError(`zip is too large (max ${MAX_ZIP_BYTES / 1024 / 1024} MB).`, 400);
+  }
   return withTempProject(async (tmp) => {
     const zipPath = join(tmp, "upload.zip");
     const dest = ensureDir(join(tmp, "project"));
     writeFileSync(zipPath, buf);
+    await assertZipWithinLimits(zipPath);
     // `unzip` refuses absolute/`..` paths; -o overwrite, -q quiet, -d dest.
     const res = await execa("unzip", ["-o", "-q", zipPath, "-d", dest], {
       timeout: 60_000,
@@ -348,6 +360,34 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
   });
 }
 
+/**
+ * Reject a zip bomb before extracting: read the central directory (`unzip -l`)
+ * and enforce total uncompressed size + entry-count caps. `unzip -l` reads the
+ * directory only — it does not extract — so this is cheap and safe.
+ */
+async function assertZipWithinLimits(zipPath: string): Promise<void> {
+  const res = await execa("unzip", ["-l", zipPath], { timeout: 30_000, reject: false });
+  if (res.exitCode !== 0) {
+    throw new AppError(`Not a readable zip: ${(res.stderr || "").trim()}`, 400);
+  }
+  // Final summary line: "  <totalBytes>   <n> files".
+  const summary = res.stdout.trim().split("\n").pop() ?? "";
+  const m = summary.match(/(\d+)\s+(\d+)\s+files?/);
+  if (m) {
+    const totalBytes = Number(m[1]);
+    const entries = Number(m[2]);
+    if (totalBytes > MAX_UNZIPPED_BYTES) {
+      throw new AppError(
+        `zip expands too large (${Math.round(totalBytes / 1024 / 1024)} MB, max ${MAX_UNZIPPED_BYTES / 1024 / 1024} MB).`,
+        400,
+      );
+    }
+    if (entries > MAX_ZIP_ENTRIES) {
+      throw new AppError(`zip has too many files (${entries}, max ${MAX_ZIP_ENTRIES}).`, 400);
+    }
+  }
+}
+
 /** Zip-slip defense: no extracted entry may be a symlink escaping `dest`. */
 function assertNoEscape(dest: string): void {
   const root = resolve(dest);
@@ -364,7 +404,9 @@ function assertNoEscape(dest: string): void {
           link = "";
         }
         const target = resolve(dir, link);
-        if (!target.startsWith(root)) {
+        // Prefix match with a trailing separator so `<root>-evil` can't pass as
+        // `<root>` (plain startsWith(root) is a classic path-boundary bug).
+        if (target !== root && !target.startsWith(root + sep)) {
           throw new AppError("Archive contains a symlink escaping the extract dir.", 400);
         }
       } else if (e.isDirectory()) {

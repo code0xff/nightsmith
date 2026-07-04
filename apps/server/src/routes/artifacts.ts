@@ -45,12 +45,18 @@ export function registerArtifactRoutes(app: FastifyInstance): void {
   // Compile a .sol (source | local path | base64 zip) with forge, then store
   // the resulting artifact just like an upload. The compiled abi+bytecode are
   // inlined by saveArtifact, so replay/import never need the source or forge.
-  app.post("/api/artifacts/compile", async (req): Promise<ArtifactListResponse> => {
-    const input = CompileArtifactRequest.parse(req.body);
-    const artifact = await compileSolidity(input);
-    saveArtifact(artifact);
-    return listSummaries();
-  });
+  // Raise the body limit past Fastify's 1 MiB default so a base64 project zip
+  // fits; compile.ts enforces the real archive/expansion caps.
+  app.post(
+    "/api/artifacts/compile",
+    { bodyLimit: 40 * 1024 * 1024 },
+    async (req): Promise<ArtifactListResponse> => {
+      const input = CompileArtifactRequest.parse(req.body);
+      const artifact = await compileSolidity(input);
+      saveArtifact(artifact);
+      return listSummaries();
+    },
+  );
 
   app.delete<{ Params: { name: string } }>(
     "/api/artifacts/:name",
