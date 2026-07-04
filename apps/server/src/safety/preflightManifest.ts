@@ -146,8 +146,11 @@ function checkAssertion(
   }
 
   if (assertion.type === "event") {
-    if (findEvents(abi, assertion.event).length === 0) {
+    const events = findEvents(abi, assertion.event);
+    if (events.length === 0) {
       warnings.push(`${assertion.contractId} has no "${assertion.event}" event in its ABI`);
+    } else if (events.length > 1) {
+      warnings.push(`${assertion.contractId}.${assertion.event} is an overloaded event — not supported`);
     }
     return;
   }

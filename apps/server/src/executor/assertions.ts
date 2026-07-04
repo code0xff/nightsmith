@@ -13,6 +13,8 @@ import { fromTokenUnits, fromWei, toTokenUnits, toTokenUnitsOrMax, toWei } from 
  */
 function normalizeTyped(value: unknown, type: string | undefined): string {
   if (type === "address" && typeof value === "string") return value.toLowerCase();
+  // bytes/bytesN: viem decodes as lowercase hex; compare case-insensitively.
+  if (type?.startsWith("bytes") && typeof value === "string") return value.toLowerCase();
   if (type && (type.startsWith("uint") || type.startsWith("int"))) {
     return BigInt(String(value)).toString();
   }
@@ -104,11 +106,6 @@ export async function evaluateAssertion(
     }
     case "event": {
       const contract = runtime.getContract(assertion.contractId);
-      const eventAbi = contract.abi.find(
-        (i) =>
-          (i as { type?: string }).type === "event" &&
-          (i as { name?: string }).name === assertion.event,
-      ) as AbiEvent | undefined;
       const filters = Object.entries(assertion.args);
       const filterDesc = filters.length
         ? ` where ${filters.map(([k, v]) => `${k}=${v}`).join(", ")}`
@@ -116,21 +113,46 @@ export async function evaluateAssertion(
       const target = assertion.count !== undefined ? `exactly ${assertion.count}` : "at least 1";
       const description =
         assertion.description ?? `${assertion.contractId} emits ${assertion.event}${filterDesc}`;
-      if (!eventAbi) {
-        return {
-          description,
-          passed: false,
-          expected: `${target} ${assertion.event} event(s)`,
-          actual: `no "${assertion.event}" event in ${assertion.contractId}'s ABI`,
-        };
+      const fail = (actual: string): AssertionResult => ({
+        description,
+        passed: false,
+        expected: `${target} ${assertion.event} event(s)`,
+        actual,
+      });
+
+      const eventAbis = contract.abi.filter(
+        (i) =>
+          (i as { type?: string }).type === "event" &&
+          (i as { name?: string }).name === assertion.event,
+      ) as AbiEvent[];
+      if (eventAbis.length === 0) {
+        return fail(`no "${assertion.event}" event in ${assertion.contractId}'s ABI`);
       }
+      if (eventAbis.length > 1) {
+        return fail(`"${assertion.event}" is an overloaded event — not supported`);
+      }
+      const eventAbi = eventAbis[0]!;
+      const inputs = (eventAbi.inputs ?? []) as {
+        name?: string;
+        type?: string;
+        indexed?: boolean;
+      }[];
+      // An indexed dynamic arg (string/bytes/array/tuple) is stored as a topic
+      // HASH, not its value — filtering by value would silently false-negative.
+      for (const [name] of filters) {
+        const inp = inputs.find((i) => i.name === name);
+        const t = inp?.type ?? "";
+        if (inp?.indexed && (t === "string" || t === "bytes" || t.endsWith("[]") || t.startsWith("tuple"))) {
+          return fail(`cannot filter on indexed dynamic arg "${name}" (it's stored as a hash)`);
+        }
+      }
+
       const logs = await runtime.getPublicClient().getLogs({
         address: contract.address,
         event: eventAbi,
         fromBlock: 0n,
         toBlock: "latest",
       });
-      const inputs = (eventAbi.inputs ?? []) as { name?: string; type?: string }[];
       const matches = logs.filter((log) => {
         const la = (log as { args?: Record<string, unknown> }).args ?? {};
         return filters.every(([name, expected]) => {
@@ -145,12 +167,7 @@ export async function evaluateAssertion(
       });
       const count = matches.length;
       const passed = assertion.count !== undefined ? count === assertion.count : count >= 1;
-      return {
-        description,
-        passed,
-        expected: `${target} ${assertion.event} event(s)`,
-        actual: `${count} emitted`,
-      };
+      return { description, passed, expected: `${target} ${assertion.event} event(s)`, actual: `${count} emitted` };
     }
     default: {
       // Exhaustiveness guard for future assertion kinds.
