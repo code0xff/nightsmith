@@ -6,7 +6,7 @@ export function ThemedToaster() {
   const { resolvedTheme } = useTheme();
   return (
     <Toaster
-      position="bottom-right"
+      position="top-right"
       theme={(resolvedTheme as "light" | "dark") ?? "dark"}
       toastOptions={{
         classNames: {
