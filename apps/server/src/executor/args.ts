@@ -44,6 +44,12 @@ function coerceArg(param: AbiParameter, value: ArgValue): unknown {
     }
     if (value !== null && typeof value === "object") {
       const obj = value as { [k: string]: ArgValue };
+      const names = new Set(components.map((c) => c.name ?? ""));
+      for (const key of Object.keys(obj)) {
+        if (!names.has(key)) {
+          throw new Error(`tuple "${param.name || "arg"}": unknown field "${key}"`);
+        }
+      }
       return components.map((c) => {
         const key = c.name ?? "";
         if (!(key in obj)) throw new Error(`tuple "${param.name || "arg"}": missing field "${key}"`);
