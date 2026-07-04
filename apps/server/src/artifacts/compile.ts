@@ -457,13 +457,27 @@ function assertNoEscape(dest: string): void {
  */
 function hardenUploadedProject(root: string): void {
   const toml = readFileSync(join(root, "foundry.toml"), "utf8");
-  const re = /^\s*(solc|solc_version)\s*=\s*["']?([^"'\n#]+)["']?/gim;
+  const solc = /^\s*(solc|solc_version)\s*=\s*["']?([^"'\n#]+)["']?/gim;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(toml))) {
+  while ((m = solc.exec(toml))) {
     const value = m[2]!.trim();
     if (!/^v?\d+\.\d+\.\d+$/.test(value)) {
       throw new AppError(
         `Uploaded foundry.toml selects a compiler by path (${m[1]} = "${value}"), which is not allowed. Use a version like "0.8.24".`,
+        400,
+      );
+    }
+  }
+  // Reject read-path config that escapes the project root — an absolute path or
+  // `..` in remappings/libs/etc. lets forge read arbitrary host files (e.g.
+  // `remappings = ["x/=/"]` + `import "x/etc/passwd"`), whose contents could
+  // leak back through compiler diagnostics. Legit projects use relative paths.
+  const readPaths = /^\s*(remappings|libs|allow_paths|include_paths|src|test|script)\s*=\s*(.+)$/gim;
+  while ((m = readPaths.exec(toml))) {
+    const rhs = m[2]!;
+    if (/\.\./.test(rhs) || /[="'[,\s]\//.test(rhs)) {
+      throw new AppError(
+        `Uploaded foundry.toml sets "${m[1]}" to a path outside the project (absolute or "..") — not allowed.`,
         400,
       );
     }
