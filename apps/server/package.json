@@ -18,6 +18,7 @@
     "demo": "tsx src/demo.ts",
     "demo:extend": "tsx src/demo-extend.ts",
     "build": "tsup",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "node dist/cli.js serve",
     "prepack": "pnpm --filter @nightsmith/web build && tsup && node -e \"require('fs').rmSync('web-dist',{recursive:true,force:true});require('fs').cpSync('../web/dist','web-dist',{recursive:true})\""
@@ -37,6 +38,7 @@
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.0"
   }
 }

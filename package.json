@@ -12,6 +12,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "dev": "pnpm --filter @nightsmith/server dev",
     "dev:web": "pnpm --filter @nightsmith/web dev",
     "demo": "pnpm --filter @nightsmith/server demo",
