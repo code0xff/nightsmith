@@ -1,5 +1,6 @@
 import { execa } from "execa";
 import {
+  cpSync,
   existsSync,
   mkdtempSync,
   readFileSync,
@@ -193,20 +194,109 @@ function makeTempDir(): string {
   return mkdtempSync(join(base, "compile-"));
 }
 
-const EPHEMERAL_FOUNDRY_TOML = `[profile.default]
-src = "src"
-out = "out"
-libs = []
-optimizer = true
-optimizer_runs = 200
-`;
+/** Generate a trusted ephemeral foundry.toml. `srcDot` compiles the tree in
+ *  place (src="."); otherwise src="src". libs/remappings/allowPaths wire deps. */
+function ephemeralFoundryToml(opts: {
+  srcDot?: boolean;
+  libs?: string[];
+  remappings?: string[];
+  allowPaths?: string[];
+}): string {
+  const lines = [
+    "[profile.default]",
+    `src = ${JSON.stringify(opts.srcDot ? "." : "src")}`,
+    'out = "out"',
+    `libs = ${JSON.stringify(opts.libs ?? [])}`,
+    "optimizer = true",
+    "optimizer_runs = 200",
+  ];
+  if (opts.remappings?.length) lines.push(`remappings = ${JSON.stringify(opts.remappings)}`);
+  if (opts.allowPaths?.length) lines.push(`allow_paths = ${JSON.stringify(opts.allowPaths)}`);
+  return lines.join("\n") + "\n";
+}
 
 /** Scaffold a throwaway Foundry project holding a single pasted source file. */
 function scaffoldStandalone(tmp: string, source: string): string {
-  writeFileSync(join(tmp, "foundry.toml"), EPHEMERAL_FOUNDRY_TOML);
+  writeFileSync(join(tmp, "foundry.toml"), ephemeralFoundryToml({}));
   const src = ensureDir(join(tmp, "src"));
   writeFileSync(join(src, "Source.sol"), source);
   return "Source.sol";
+}
+
+const COPY_SKIP = new Set(["node_modules", ".git", "out", "cache", "artifacts", ".foundry"]);
+
+/** Walk up from `start` for a `node_modules` dir (bounded; never above
+ *  `boundary`, so an untrusted extracted tree can't reach the host's). */
+function findNodeModules(start: string, boundary?: string): string | null {
+  let dir = resolve(start);
+  const bound = boundary ? resolve(boundary) : null;
+  for (let i = 0; i < 40; i++) {
+    const nm = join(dir, "node_modules");
+    if (existsSync(nm)) return nm;
+    if (bound && dir === bound) break;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/**
+ * Explicit remappings for the packages in a node_modules dir so Hardhat-style
+ * dependency imports (`@openzeppelin/contracts/…`, `solmate/…`) resolve. Scoped
+ * (@x/y) and flat packages both handled. `target` is how forge references the
+ * dir (absolute for a trusted local/sandboxed path).
+ */
+function nodeModulesRemappings(nmDir: string, target: string): string[] {
+  const out: string[] = [];
+  let entries;
+  try {
+    entries = readdirSync(nmDir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (!e.isDirectory() || (e.name.startsWith(".") && !e.name.startsWith("@"))) continue;
+    if (e.name.startsWith("@")) {
+      let pkgs;
+      try {
+        pkgs = readdirSync(join(nmDir, e.name), { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const pkg of pkgs) {
+        if (pkg.isDirectory()) out.push(`${e.name}/${pkg.name}/=${target}/${e.name}/${pkg.name}/`);
+      }
+    } else {
+      out.push(`${e.name}/=${target}/${e.name}/`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Scaffold a throwaway project from a real directory (a lone `.sol`'s dir, or a
+ * plain non-Foundry project dir). Copies the tree into `src/` so relative
+ * imports resolve; a nearby node_modules is wired via absolute remappings so
+ * dependency imports resolve too. `.env` and heavy/build dirs are never copied.
+ */
+function scaffoldFromDir(tmp: string, srcDir: string, nmBoundary?: string): void {
+  const nm = findNodeModules(srcDir, nmBoundary);
+  writeFileSync(
+    join(tmp, "foundry.toml"),
+    ephemeralFoundryToml({
+      libs: nm ? [nm] : [],
+      remappings: nm ? nodeModulesRemappings(nm, nm) : [],
+      allowPaths: nm ? [nm] : [],
+    }),
+  );
+  cpSync(srcDir, join(tmp, "src"), {
+    recursive: true,
+    filter: (s) => {
+      const b = basename(s);
+      return !COPY_SKIP.has(b) && !/^\.env(\.|$)/.test(b);
+    },
+  });
 }
 
 /** Walk up from `start` looking for a directory containing foundry.toml. */
@@ -318,18 +408,18 @@ async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedA
     // Real Foundry project: build in place (imports/libs resolve).
     return finish(root, { fileBasename: isFile ? basename(p) : undefined }, input);
   }
-  // Lone .sol with no project → treat as standalone (imports to siblings won't
-  // resolve; a clear compiler error surfaces if they're needed).
-  if (!isFile) {
-    throw new AppError(
-      `No foundry.toml found for ${p}. Point at a file, or pass --root.`,
-      400,
-    );
-  }
-  const source = readFileSync(p, "utf8");
+  // No foundry.toml (e.g. a Hardhat repo): scaffold an ephemeral project from the
+  // relevant directory so relative imports (and a nearby node_modules) resolve.
+  // A file → its containing dir; a directory → itself.
+  const srcDir = isFile ? dirname(p) : p;
+  const sourceText = isFile ? readFileSync(p, "utf8") : undefined;
   return withTempProject((tmp) => {
-    const fileBasename = scaffoldStandalone(tmp, source);
-    return finish(tmp, { fileBasename, sourceText: source }, input);
+    scaffoldFromDir(tmp, srcDir);
+    return finish(
+      tmp,
+      isFile ? { fileBasename: basename(p), sourceText } : {},
+      input,
+    );
   });
 }
 
@@ -359,16 +449,24 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
       throw new AppError(`Could not unzip the archive: ${(res.stderr || "").trim()}`, 400);
     }
     assertNoEscape(dest);
-    // The project root may be the dest or a single top-level folder inside it.
-    const root = findProjectRoot(dest) ?? unwrapSingleDir(dest);
-    if (!existsSync(join(root, "foundry.toml"))) {
-      throw new AppError(
-        "The zip has no foundry.toml — upload a Foundry project (or use source/path).",
-        400,
-      );
+    // Root = the extraction dir, or a single top-level folder inside it.
+    const root = existsSync(join(dest, "foundry.toml")) ? dest : unwrapSingleDir(dest);
+    // Strip `.env` before any build — forge loads dotenv from cwd, and a
+    // `.env` could inject FOUNDRY_SOLC=./evil (arbitrary-exec) regardless of
+    // whether the zip ships its own foundry.toml.
+    stripDotenvFiles(root);
+
+    if (existsSync(join(root, "foundry.toml"))) {
+      // Trust the project's own config, but reject its exec/path escapes.
+      hardenUploadedProject(root);
+      return finish(root, {}, input);
     }
-    hardenUploadedProject(root);
-    return finish(root, {}, input);
+    // Plain .sol project (no foundry.toml): scaffold a trusted ephemeral project
+    // from the extracted tree. node_modules is confined to inside the tree
+    // (never the host's) so an untrusted upload can't reach outside the sandbox.
+    const proj = ensureDir(join(tmp, "scaffold"));
+    scaffoldFromDir(proj, root, root);
+    return finish(proj, {}, input);
   });
 }
 
@@ -452,7 +550,8 @@ function assertNoEscape(dest: string): void {
  * (`solc = "./evil"`) or from a project `.env` (`FOUNDRY_SOLC=./evil`). We:
  *   1. reject a foundry.toml that selects a compiler by filesystem path (a bare
  *      semver like "0.8.24" is fine — svm downloads a trusted solc), and
- *   2. delete any `.env` files so forge's dotenv loading can't inject config.
+ *   2. delete any `.env` files so forge's dotenv loading can't inject config
+ *      (done separately via stripDotenvFiles, before ANY uploaded build).
  * FOUNDRY_OUT/CACHE forcing only confines writes; this confines execution.
  */
 function hardenUploadedProject(root: string): void {
@@ -482,7 +581,11 @@ function hardenUploadedProject(root: string): void {
       );
     }
   }
-  // Strip `.env` / `.env.*` anywhere in the tree (forge loads dotenv from cwd).
+}
+
+/** Delete every `.env` / `.env.*` in an extracted tree — forge loads dotenv from
+ *  cwd, and a `.env` could inject FOUNDRY_SOLC=./evil (arbitrary exec). */
+function stripDotenvFiles(root: string): void {
   const skip = new Set(["out", "cache", ".git", "node_modules"]);
   const stack = [root];
   while (stack.length > 0) {
