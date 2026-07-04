@@ -21,7 +21,12 @@ function normalizeTyped(value: unknown, type: string | undefined): string {
     if (type.startsWith("uint") || type.startsWith("int")) {
       return BigInt(String(value)).toString();
     }
-    if (type === "bool") return String(value).toLowerCase() === "true" ? "true" : "false";
+    if (type === "bool") {
+      // Only "true"/"false" are valid; an invalid value gets a sentinel so it
+      // can't silently coerce to false and match a real `false` log.
+      const s = String(value).toLowerCase();
+      return s === "true" || s === "false" ? s : `bool?${String(value)}`;
+    }
   }
   if (typeof value === "bigint") return value.toString();
   if (typeof value === "string") return value;
