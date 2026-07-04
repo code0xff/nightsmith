@@ -151,7 +151,10 @@ export async function evaluateAssertion(
           return fail(`unknown arg "${name}" for event ${assertion.event}`);
         }
         const t = inp.type ?? "";
-        if (inp.indexed && (t === "string" || t === "bytes" || t.endsWith("[]") || t.startsWith("tuple"))) {
+        // Indexed dynamic values (string, bytes, ANY array incl. fixed-size, or
+        // tuple) are stored as a topic hash, not the value — can't filter by value.
+        const isArray = /\[\d*\]$/.test(t);
+        if (inp.indexed && (t === "string" || t === "bytes" || isArray || t.startsWith("tuple"))) {
           return fail(`cannot filter on indexed dynamic arg "${name}" (it's stored as a hash)`);
         }
       }
