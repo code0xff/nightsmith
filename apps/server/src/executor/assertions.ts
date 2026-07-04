@@ -19,7 +19,14 @@ function normalizeTyped(value: unknown, type: string | undefined): string {
     // bytes/bytesN: viem decodes as lowercase hex; compare case-insensitively.
     if (type.startsWith("bytes") && typeof value === "string") return value.toLowerCase();
     if (type.startsWith("uint") || type.startsWith("int")) {
-      return BigInt(String(value)).toString();
+      // Never throw on a malformed filter value (e.g. "1.5" for a uint) — return
+      // a sentinel that won't match a real decoded integer, so the assertion
+      // fails cleanly instead of crashing evaluation.
+      try {
+        return BigInt(String(value)).toString();
+      } catch {
+        return `int?${String(value)}`;
+      }
     }
     if (type === "bool") {
       // Only "true"/"false" are valid; an invalid value gets a sentinel so it
