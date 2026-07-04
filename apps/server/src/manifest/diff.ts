@@ -52,10 +52,12 @@ export function diffManifests(
   }
 
   const assertKey = (a: WorldManifest["assertions"][number]) => {
-    if (a.type === "tokenBalance") return `${a.account}:${a.contractId}`;
-    if (a.type === "ethBalance") return `eth:${a.account}`;
-    if (a.type === "allowance") return `${a.owner}->${a.spender}:${a.contractId}`;
-    return `${a.function}:${a.contractId}`; // callResult
+    // Namespace every key by assertion type so different kinds can't collide
+    // (e.g. a tokenBalance on account "eth" vs an ethBalance).
+    if (a.type === "tokenBalance") return `tokenBalance:${a.account}:${a.contractId}`;
+    if (a.type === "ethBalance") return `ethBalance:${a.account}`;
+    if (a.type === "allowance") return `allowance:${a.owner}->${a.spender}:${a.contractId}`;
+    return `callResult:${a.function}:${a.contractId}`;
   };
   const beforeAsserts = new Map(before.assertions.map((a) => [assertKey(a), a.expected]));
   for (const a of after.assertions) {
