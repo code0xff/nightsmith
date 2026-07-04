@@ -1,4 +1,4 @@
-import { parseEther, type Abi, type Hex, type TransactionReceipt } from "viem";
+import { formatEther, parseEther, type Abi, type Hex, type TransactionReceipt } from "viem";
 import { isAddress } from "@nightsmith/shared";
 import { impersonate, setBalance, stopImpersonate } from "../anvil/snapshot.js";
 import type { Runtime } from "../runtime/runtime.js";
@@ -49,24 +49,27 @@ export async function runWrite(
     });
 
   if (isAddress(senderRef)) {
-    await impersonate(client, senderRef);
-    // If the address can't cover gas, lend it some — but only to subsidize GAS,
-    // never to alter its observable ETH. Afterward, restore to preBalance minus
-    // any legitimate `value` it sent (so a payable call's ETH stays spent while
-    // the gas subsidy is invisible). Addresses that can already pay keep their
-    // real (deterministic) gas+value cost.
+    // If the address can't cover gas, lend it some — but ONLY to subsidize GAS,
+    // never to fund a value transfer or alter its observable ETH. The value must
+    // come from the address's own balance, so reject an unaffordable value as
+    // insufficient funds (as it would fail naturally). Afterward, restore to
+    // preBalance minus the value it sent, keeping the gas subsidy invisible.
     const preBalance = await client.getBalance({ address: senderRef });
+    const value = params.value ?? 0n;
     const subsidized = preBalance < MIN_GAS;
+    if (subsidized && preBalance < value) {
+      throw new Error(
+        `Impersonated ${senderRef} has insufficient ETH to send ${formatEther(value)} ETH`,
+      );
+    }
+    await impersonate(client, senderRef);
     try {
       if (subsidized) await setBalance(client, senderRef, preBalance + GAS_TOPUP);
       const hash = await write(runtime.impersonatingWalletFor(senderRef), senderRef);
       const receipt = await client.waitForTransactionReceipt({ hash });
       return { hash, receipt, from: senderRef };
     } finally {
-      if (subsidized) {
-        const value = params.value ?? 0n;
-        await setBalance(client, senderRef, preBalance > value ? preBalance - value : 0n);
-      }
+      if (subsidized) await setBalance(client, senderRef, preBalance - value);
       await stopImpersonate(client, senderRef);
     }
   }
