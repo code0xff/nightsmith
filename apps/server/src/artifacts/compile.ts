@@ -66,7 +66,15 @@ async function forgeBuild(root: string, outDir: string, cacheDir: string): Promi
       timeout: FORGE_TIMEOUT_MS,
       reject: false,
       cwd: root,
-      env: { FOUNDRY_OUT: outDir, FOUNDRY_CACHE_PATH: cacheDir },
+      // Force EVERY forge-build write path via env (highest precedence, so an
+      // untrusted foundry.toml can't redirect them): artifacts, cache, and
+      // build-info. build-info is also disabled — we never read it.
+      env: {
+        FOUNDRY_OUT: outDir,
+        FOUNDRY_CACHE_PATH: cacheDir,
+        FOUNDRY_BUILD_INFO: "false",
+        FOUNDRY_BUILD_INFO_PATH: join(dirname(outDir), "build-info"),
+      },
     },
   );
   if (result.exitCode !== 0) {
