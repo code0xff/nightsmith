@@ -145,8 +145,13 @@ export async function evaluateAssertion(
       // HASH, not its value — filtering by value would silently false-negative.
       for (const [name] of filters) {
         const inp = inputs.find((i) => i.name === name);
-        const t = inp?.type ?? "";
-        if (inp?.indexed && (t === "string" || t === "bytes" || t.endsWith("[]") || t.startsWith("tuple"))) {
+        // A typo'd/unknown arg name would never match any log — reject it up
+        // front rather than silently counting 0 (a false positive for count:0).
+        if (!inp) {
+          return fail(`unknown arg "${name}" for event ${assertion.event}`);
+        }
+        const t = inp.type ?? "";
+        if (inp.indexed && (t === "string" || t === "bytes" || t.endsWith("[]") || t.startsWith("tuple"))) {
           return fail(`cannot filter on indexed dynamic arg "${name}" (it's stored as a hash)`);
         }
       }
