@@ -12,13 +12,17 @@ import { fromTokenUnits, fromWei, toTokenUnits, toTokenUnitsOrMax, toWei } from 
  * multi-return functions fall back to bigint-safe JSON (best-effort).
  */
 function normalizeTyped(value: unknown, type: string | undefined): string {
-  if (type === "address" && typeof value === "string") return value.toLowerCase();
-  // bytes/bytesN: viem decodes as lowercase hex; compare case-insensitively.
-  if (type?.startsWith("bytes") && typeof value === "string") return value.toLowerCase();
-  if (type && (type.startsWith("uint") || type.startsWith("int"))) {
-    return BigInt(String(value)).toString();
+  // Scalar handling only for non-array types; arrays/tuples fall to the
+  // bigint-safe JSON fallback below (so e.g. uint256[] doesn't hit BigInt()).
+  if (type && !type.endsWith("]")) {
+    if (type === "address" && typeof value === "string") return value.toLowerCase();
+    // bytes/bytesN: viem decodes as lowercase hex; compare case-insensitively.
+    if (type.startsWith("bytes") && typeof value === "string") return value.toLowerCase();
+    if (type.startsWith("uint") || type.startsWith("int")) {
+      return BigInt(String(value)).toString();
+    }
+    if (type === "bool") return String(value).toLowerCase() === "true" ? "true" : "false";
   }
-  if (type === "bool") return String(value).toLowerCase() === "true" ? "true" : "false";
   if (typeof value === "bigint") return value.toString();
   if (typeof value === "string") return value;
   return JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
