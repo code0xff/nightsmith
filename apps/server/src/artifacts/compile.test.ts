@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { locateForge } from "../anvil/locate.js";
 import { compileSolidity } from "./compile.js";
 
 /** Whether a CLI is runnable (skip the suite gracefully in a toolless env). */
@@ -24,15 +25,12 @@ async function toolOk(cmd: string, args = ["--version"]): Promise<boolean> {
   }
 }
 
-const forgeBin =
-  (await toolOk(join(process.env.HOME ?? "", ".foundry/bin/forge")))
-    ? join(process.env.HOME ?? "", ".foundry/bin/forge")
-    : (await toolOk("forge"))
-      ? "forge"
-      : null;
+// Probe forge exactly as production does (locateForge honors FOUNDRY_BIN_DIR),
+// so the gate can't false-skip or false-fail on an env-specific forge location.
+const forgeOk = await toolOk(locateForge());
 const zipOk = await toolOk("zip", ["-v"]);
 const unzipOk = await toolOk("unzip", ["-v"]);
-const canRun = Boolean(forgeBin) && zipOk && unzipOk;
+const canRun = forgeOk && zipOk && unzipOk;
 
 const SPDX = "// SPDX-License-Identifier: MIT\n";
 const COUNTER = `${SPDX}pragma solidity ^0.8.20;\ncontract Counter { uint256 public number; function inc() external { number += 1; } }\n`;
