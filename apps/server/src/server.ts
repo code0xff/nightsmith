@@ -82,7 +82,7 @@ export async function buildServer(): Promise<NightsmithServer> {
   registerImportRoutes(app, runtime);
   registerAiRoutes(app);
   registerAnvilRoutes(app, runtime);
-  registerArtifactRoutes(app);
+  registerArtifactRoutes(app, runtime);
 
   // Serve the built web cockpit (when present) with an SPA fallback.
   const webDist = webDistDir();

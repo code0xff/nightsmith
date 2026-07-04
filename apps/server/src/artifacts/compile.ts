@@ -10,11 +10,12 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type { CompileArtifactRequest, UploadedArtifact } from "@nightsmith/shared";
 import { locateForge } from "../anvil/locate.js";
 import { AppError } from "../utils/errors.js";
-import { dataDir, ensureDir } from "../utils/paths.js";
+import { ensureDir } from "../utils/paths.js";
 
 const FORGE_TIMEOUT_MS = 300_000; // first compile may download a solc via svm
 
@@ -51,29 +52,81 @@ async function assertForgeInstalled(): Promise<void> {
 
 // ── forge invocations ────────────────────────────────────────────────────────
 
+/** Progress sink for a compile (forge output, incl. any solc download). */
+export type CompileLogger = (line: string, level: "info" | "warning") => void;
+
+/** Truncate absurdly long lines so a single unbounded "line" can't blow memory. */
+const MAX_LINE = 8 * 1024;
+
+/**
+ * Stream a piped process output line-by-line to `onLine`. Flushes any residual
+ * (newline-less) text on end/close so a final unterminated diagnostic isn't
+ * dropped, and caps each emitted line + the in-progress buffer at MAX_LINE
+ * (execa's maxBuffer doesn't apply with buffer:false). Resolves once fully
+ * drained, so callers can await complete output before building a diagnostic.
+ */
+function streamLines(
+  stream: NodeJS.ReadableStream | null | undefined,
+  onLine: (line: string) => void,
+): Promise<void> {
+  return new Promise((resolvePromise) => {
+    if (!stream) return resolvePromise();
+    let buffer = "";
+    const emit = (s: string) => {
+      const t = s.trimEnd();
+      if (t) onLine(t.length > MAX_LINE ? t.slice(0, MAX_LINE) + "…" : t);
+    };
+    stream.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString();
+      let idx: number;
+      while ((idx = buffer.indexOf("\n")) >= 0) {
+        emit(buffer.slice(0, idx));
+        buffer = buffer.slice(idx + 1);
+      }
+      if (buffer.length > MAX_LINE) {
+        emit(buffer); // flush an over-long, newline-less run so it can't grow unbounded
+        buffer = "";
+      }
+    });
+    const done = () => {
+      if (buffer) {
+        emit(buffer);
+        buffer = "";
+      }
+      resolvePromise();
+    };
+    stream.on("end", done);
+    stream.on("close", done);
+    stream.on("error", () => resolvePromise());
+  });
+}
+
 /**
  * Run `forge build` at a project root, writing artifacts/cache to the
  * caller-controlled `outDir`/`cacheDir`. Forcing these via env (which overrides
  * the project's foundry.toml in Foundry's precedence) confines forge's writes to
  * our sandbox — an untrusted uploaded `foundry.toml` can't redirect `out`/
- * `cache_path` to an arbitrary host location. Throws a clean AppError with the
- * compiler diagnostics (not a stack trace) on failure.
+ * `cache_path` to an arbitrary host location. Output streams to `onLog` (so the
+ * UI sees progress, incl. a first-time solc download). Throws a clean AppError
+ * with the compiler diagnostics (not a stack trace) on failure.
  */
 async function forgeBuild(
   root: string,
   outDir: string,
   cacheDir: string,
   buildPaths: string[] = [],
+  onLog?: CompileLogger,
 ): Promise<void> {
   // When a specific target path is given, forge compiles only that file and its
   // import graph — so an unrelated broken sibling in the same directory can't
   // fail the build (only relevant for the lone-file scaffold).
-  const result = await execa(
+  const proc = execa(
     locateForge(),
     ["build", ...buildPaths, "--root", root, "--extra-output", "userdoc", "devdoc"],
     {
       timeout: FORGE_TIMEOUT_MS,
       reject: false,
+      buffer: false, // we stream + accumulate ourselves
       cwd: root,
       // Force EVERY forge-build write path via env (highest precedence, so an
       // untrusted foundry.toml can't redirect them): artifacts, cache, and
@@ -86,8 +139,27 @@ async function forgeBuild(
       },
     },
   );
+  // Accumulate a bounded tail for diagnostics on failure, and stream live.
+  const errTail: string[] = [];
+  const outTail: string[] = [];
+  const cap = (arr: string[], line: string) => {
+    arr.push(line);
+    if (arr.length > 400) arr.shift();
+  };
+  const drained = Promise.all([
+    streamLines(proc.stdout, (l) => {
+      cap(outTail, l);
+      onLog?.(l, "info");
+    }),
+    streamLines(proc.stderr, (l) => {
+      cap(errTail, l);
+      onLog?.(l, "warning");
+    }),
+  ]);
+  const result = await proc;
+  await drained; // ensure all output (incl. an unterminated final line) is captured
   if (result.exitCode !== 0) {
-    const diagnostics = (result.stderr || result.stdout || "forge build failed").trim();
+    const diagnostics = (errTail.join("\n") || outTail.join("\n") || "forge build failed").trim();
     throw new AppError(`Compilation failed:\n${diagnostics}`, 400);
   }
 }
@@ -224,8 +296,10 @@ function extractFromArtifact(jsonPath: string): Extracted {
 // ── temp project scaffolding ─────────────────────────────────────────────────
 
 function makeTempDir(): string {
-  const base = ensureDir(join(dataDir(), "tmp"));
-  return mkdtempSync(join(base, "compile-"));
+  // Use the OS temp dir, NOT the data dir: a source directory we copy from could
+  // be an ancestor of the data dir (e.g. compiling a .sol in $HOME while data is
+  // ~/.nightsmith), and cpSync refuses to copy a directory into its own subtree.
+  return mkdtempSync(join(tmpdir(), "nightsmith-compile-"));
 }
 
 /** Generate a trusted ephemeral foundry.toml. `srcDot` compiles the tree in
@@ -382,16 +456,17 @@ function findSourceText(root: string, fileBasename: string): string | undefined 
  */
 export async function compileSolidity(
   input: CompileArtifactRequest,
+  onLog?: CompileLogger,
 ): Promise<UploadedArtifact> {
   await assertForgeInstalled();
   if (input.source !== undefined) {
     return withTempProject((tmp) => {
       const fileBasename = scaffoldStandalone(tmp, input.source!);
-      return finish(tmp, { fileBasename, sourceText: input.source }, input);
+      return finish(tmp, { fileBasename, sourceText: input.source }, input, onLog);
     });
   }
-  if (input.path !== undefined) return compileFromPath(input);
-  if (input.zipBase64 !== undefined) return compileFromZip(input);
+  if (input.path !== undefined) return compileFromPath(input, onLog);
+  if (input.zipBase64 !== undefined) return compileFromZip(input, onLog);
   throw new AppError("provide exactly one of: source, path, zipBase64", 400);
 }
 
@@ -411,11 +486,18 @@ async function finish(
   root: string,
   target: { fileBasename?: string; sourceText?: string; buildPath?: string },
   input: CompileArtifactRequest,
+  onLog?: CompileLogger,
 ): Promise<UploadedArtifact> {
   const scratch = makeTempDir();
   try {
     const outDir = join(scratch, "out");
-    await forgeBuild(root, outDir, join(scratch, "cache"), target.buildPath ? [target.buildPath] : []);
+    await forgeBuild(
+      root,
+      outDir,
+      join(scratch, "cache"),
+      target.buildPath ? [target.buildPath] : [],
+      onLog,
+    );
     const found = locateArtifact(outDir, {
       fileBasename: target.fileBasename,
       contractName: input.contractName,
@@ -429,7 +511,10 @@ async function finish(
   }
 }
 
-async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedArtifact> {
+async function compileFromPath(
+  input: CompileArtifactRequest,
+  onLog?: CompileLogger,
+): Promise<UploadedArtifact> {
   const p = input.path!;
   if (!isAbsolute(p)) throw new AppError("path must be absolute.", 400);
   if (!existsSync(p)) throw new AppError(`path does not exist: ${p}`, 400);
@@ -440,7 +525,7 @@ async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedA
 
   if (root) {
     // Real Foundry project: build in place (imports/libs resolve).
-    return finish(root, { fileBasename: isFile ? basename(p) : undefined }, input);
+    return finish(root, { fileBasename: isFile ? basename(p) : undefined }, input, onLog);
   }
   // No foundry.toml (e.g. a Hardhat repo): scaffold an ephemeral project from the
   // relevant directory so relative imports (and a nearby node_modules) resolve.
@@ -458,11 +543,15 @@ async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedA
         ? { fileBasename: basename(p), sourceText, buildPath: `src/${basename(p)}` }
         : {},
       input,
+      onLog,
     );
   });
 }
 
-async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedArtifact> {
+async function compileFromZip(
+  input: CompileArtifactRequest,
+  onLog?: CompileLogger,
+): Promise<UploadedArtifact> {
   if (!input.contractName) {
     throw new AppError("A zip compile needs a contractName to select.", 400);
   }
@@ -498,14 +587,14 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
     if (existsSync(join(root, "foundry.toml"))) {
       // Trust the project's own config, but reject its exec/path escapes.
       hardenUploadedProject(root);
-      return finish(root, {}, input);
+      return finish(root, {}, input, onLog);
     }
     // Plain .sol project (no foundry.toml): scaffold a trusted ephemeral project
     // from the extracted tree. node_modules is confined to inside the tree
     // (never the host's) so an untrusted upload can't reach outside the sandbox.
     const proj = ensureDir(join(tmp, "scaffold"));
     scaffoldFromDir(proj, root, root);
-    return finish(proj, {}, input);
+    return finish(proj, {}, input, onLog);
   });
 }
 

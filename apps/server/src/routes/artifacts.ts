@@ -8,6 +8,7 @@ import {
   saveArtifact,
 } from "../artifacts/store.js";
 import { compileSolidity } from "../artifacts/compile.js";
+import type { Runtime } from "../runtime/runtime.js";
 
 /** Function names declared by an ABI (in declaration order). */
 function functionNames(abi: readonly unknown[]): string[] {
@@ -33,7 +34,7 @@ function listSummaries(): ArtifactListResponse {
   return { artifacts: [builtinMockErc20(), ...uploaded] };
 }
 
-export function registerArtifactRoutes(app: FastifyInstance): void {
+export function registerArtifactRoutes(app: FastifyInstance, runtime: Runtime): void {
   app.get("/api/artifacts", async (): Promise<ArtifactListResponse> => listSummaries());
 
   // Body is validated (and name-sanitized) inside saveArtifact.
@@ -52,8 +53,14 @@ export function registerArtifactRoutes(app: FastifyInstance): void {
     { bodyLimit: 40 * 1024 * 1024 },
     async (req): Promise<ArtifactListResponse> => {
       const input = CompileArtifactRequest.parse(req.body);
-      const artifact = await compileSolidity(input);
+      // Stream forge output (incl. a first-time solc download) to the log
+      // console so a long compile shows progress instead of a dead spinner.
+      runtime.log("info", "Compiling with forge…", "compile");
+      const artifact = await compileSolidity(input, (line, level) =>
+        runtime.log(level, line, "compile"),
+      );
       saveArtifact(artifact);
+      runtime.log("success", `Compiled and stored "${artifact.name}"`, "compile");
       return listSummaries();
     },
   );

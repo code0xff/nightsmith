@@ -126,12 +126,15 @@ program
   .action(
     async (path: string, opts: { contract?: string; name?: string; root?: string }) => {
       try {
-        const artifact = await compileSolidity({
-          path: resolve(path),
-          contractName: opts.contract,
-          name: opts.name,
-          root: opts.root ? resolve(opts.root) : undefined,
-        });
+        const artifact = await compileSolidity(
+          {
+            path: resolve(path),
+            contractName: opts.contract,
+            name: opts.name,
+            root: opts.root ? resolve(opts.root) : undefined,
+          },
+          (line) => logger.info(line),
+        );
         saveArtifact(artifact);
         const fns = artifact.abi
           .filter((i) => (i as { type?: string }).type === "function")
