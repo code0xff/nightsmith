@@ -63,13 +63,22 @@ export async function runWrite(
       );
     }
     await impersonate(client, senderRef);
+    let receipt: TransactionReceipt | undefined;
     try {
       if (subsidized) await setBalance(client, senderRef, preBalance + GAS_TOPUP);
       const hash = await write(runtime.impersonatingWalletFor(senderRef), senderRef);
-      const receipt = await client.waitForTransactionReceipt({ hash });
+      receipt = await client.waitForTransactionReceipt({ hash });
       return { hash, receipt, from: senderRef };
     } finally {
-      if (subsidized) await setBalance(client, senderRef, preBalance - value);
+      if (subsidized) {
+        // Exact accounting: remove ONLY the subsidy and make gas free, preserving
+        // every real ETH flow (value sent AND value received during the call).
+        //   desired = actualPost - GAS_TOPUP + gasCost = preBalance - sent + received
+        const gasCost = receipt ? receipt.gasUsed * receipt.effectiveGasPrice : 0n;
+        const post = await client.getBalance({ address: senderRef });
+        const desired = post - GAS_TOPUP + gasCost;
+        await setBalance(client, senderRef, desired > 0n ? desired : 0n);
+      }
       await stopImpersonate(client, senderRef);
     }
   }
