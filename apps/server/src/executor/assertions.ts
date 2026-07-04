@@ -146,9 +146,10 @@ export async function evaluateAssertion(
         type?: string;
         indexed?: boolean;
       }[];
-      // An indexed dynamic arg (string/bytes/array/tuple) is stored as a topic
-      // HASH, not its value — filtering by value would silently false-negative.
-      for (const [name] of filters) {
+      // Validate + pre-resolve every filter up front (so a bad filter is a clean
+      // assertion failure, not a crash mid-scan).
+      const resolved: { name: string; expected: unknown; type: string }[] = [];
+      for (const [name, expected] of filters) {
         const inp = inputs.find((i) => i.name === name);
         // A typo'd/unknown arg name would never match any log — reject it up
         // front rather than silently counting 0 (a false positive for count:0).
@@ -162,6 +163,16 @@ export async function evaluateAssertion(
         if (inp.indexed && (t === "string" || t === "bytes" || isArray || t.startsWith("tuple"))) {
           return fail(`cannot filter on indexed dynamic arg "${name}" (it's stored as a hash)`);
         }
+        let exp: unknown = expected;
+        if (t === "address" && typeof expected === "string" && !isAddress(expected)) {
+          // A named account resolves to its address; an unknown name is a clean fail.
+          try {
+            exp = runtime.resolveAddress(expected);
+          } catch {
+            return fail(`unknown account "${expected}" for arg "${name}"`);
+          }
+        }
+        resolved.push({ name, expected: exp, type: t });
       }
 
       const logs = await runtime.getPublicClient().getLogs({
@@ -172,15 +183,9 @@ export async function evaluateAssertion(
       });
       const matches = logs.filter((log) => {
         const la = (log as { args?: Record<string, unknown> }).args ?? {};
-        return filters.every(([name, expected]) => {
-          const type = inputs.find((i) => i.name === name)?.type;
-          // A named account in an address-typed arg resolves to its address.
-          const exp =
-            type === "address" && typeof expected === "string" && !isAddress(expected)
-              ? runtime.resolveAddress(expected)
-              : expected;
-          return normalizeTyped(la[name], type) === normalizeTyped(exp, type);
-        });
+        return resolved.every(
+          ({ name, expected, type }) => normalizeTyped(la[name], type) === normalizeTyped(expected, type),
+        );
       });
       const count = matches.length;
       const passed = assertion.count !== undefined ? count === assertion.count : count >= 1;
