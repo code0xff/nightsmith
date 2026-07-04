@@ -59,10 +59,18 @@ async function assertForgeInstalled(): Promise<void> {
  * `cache_path` to an arbitrary host location. Throws a clean AppError with the
  * compiler diagnostics (not a stack trace) on failure.
  */
-async function forgeBuild(root: string, outDir: string, cacheDir: string): Promise<void> {
+async function forgeBuild(
+  root: string,
+  outDir: string,
+  cacheDir: string,
+  buildPaths: string[] = [],
+): Promise<void> {
+  // When a specific target path is given, forge compiles only that file and its
+  // import graph — so an unrelated broken sibling in the same directory can't
+  // fail the build (only relevant for the lone-file scaffold).
   const result = await execa(
     locateForge(),
-    ["build", "--root", root, "--extra-output", "userdoc", "devdoc"],
+    ["build", ...buildPaths, "--root", root, "--extra-output", "userdoc", "devdoc"],
     {
       timeout: FORGE_TIMEOUT_MS,
       reject: false,
@@ -375,13 +383,13 @@ async function withTempProject<T>(fn: (tmp: string) => Promise<T>): Promise<T> {
  *  cleaned up afterward. */
 async function finish(
   root: string,
-  target: { fileBasename?: string; sourceText?: string },
+  target: { fileBasename?: string; sourceText?: string; buildPath?: string },
   input: CompileArtifactRequest,
 ): Promise<UploadedArtifact> {
   const scratch = makeTempDir();
   try {
     const outDir = join(scratch, "out");
-    await forgeBuild(root, outDir, join(scratch, "cache"));
+    await forgeBuild(root, outDir, join(scratch, "cache"), target.buildPath ? [target.buildPath] : []);
     const found = locateArtifact(outDir, {
       fileBasename: target.fileBasename,
       contractName: input.contractName,
@@ -415,9 +423,14 @@ async function compileFromPath(input: CompileArtifactRequest): Promise<UploadedA
   const sourceText = isFile ? readFileSync(p, "utf8") : undefined;
   return withTempProject((tmp) => {
     scaffoldFromDir(tmp, srcDir);
+    // Lone file: build only that file (+ its imports) so unrelated broken
+    // siblings in the same directory don't fail the build. The file is copied to
+    // the top of src/, so its build path is `src/<basename>`.
     return finish(
       tmp,
-      isFile ? { fileBasename: basename(p), sourceText } : {},
+      isFile
+        ? { fileBasename: basename(p), sourceText, buildPath: `src/${basename(p)}` }
+        : {},
       input,
     );
   });
