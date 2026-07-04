@@ -53,6 +53,7 @@ export function diffManifests(
 
   const assertKey = (a: WorldManifest["assertions"][number]) => {
     if (a.type === "tokenBalance") return `${a.account}:${a.contractId}`;
+    if (a.type === "ethBalance") return `eth:${a.account}`;
     if (a.type === "allowance") return `${a.owner}->${a.spender}:${a.contractId}`;
     return `${a.function}:${a.contractId}`; // callResult
   };

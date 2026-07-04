@@ -123,6 +123,7 @@ function checkAssertion(
   contracts: Map<string, ResolvedAbi>,
   warnings: string[],
 ): void {
+  if (!("contractId" in assertion)) return; // native-ETH assertion targets no contract
   const abi = contracts.get(assertion.contractId)?.abi;
   if (!abi) return;
 

@@ -216,10 +216,23 @@ export const AllowanceAssertion = z.object({
   description: z.string().optional(),
 });
 
+/** Assert an account's native ETH balance (exact, in ether). References no
+ *  contract. Note: gas spent by a sender is deterministic but real, so assert
+ *  on accounts that only receive (or account for gas). */
+export const EthBalanceAssertion = z.object({
+  type: z.literal("ethBalance"),
+  /** A named account or a literal 0x address. */
+  account: AccountRef,
+  /** Expected native balance in ether (decimal string). */
+  expected: DecimalAmount,
+  description: z.string().optional(),
+});
+
 export const Assertion = z.discriminatedUnion("type", [
   TokenBalanceAssertion,
   CallResultAssertion,
   AllowanceAssertion,
+  EthBalanceAssertion,
 ]);
 export type Assertion = z.infer<typeof Assertion>;
 

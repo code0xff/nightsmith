@@ -67,6 +67,7 @@ function assertionDescriptions(manifest: WorldManifest): string[] {
   return manifest.assertions.map((a) => {
     if (a.description) return a.description;
     if (a.type === "tokenBalance") return `${a.account} = ${a.expected}`;
+    if (a.type === "ethBalance") return `${a.account} = ${a.expected} ETH`;
     if (a.type === "allowance") return `allowance ${a.owner}->${a.spender} = ${a.expected}`;
     return `${a.function}() = ${a.expected}`; // callResult
   });

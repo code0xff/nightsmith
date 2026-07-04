@@ -20,7 +20,10 @@ export function validateManifest(input: unknown): WorldManifest {
     }
   }
   for (const assertion of manifest.assertions) {
-    if (assertion.type === "tokenBalance" && isAddress(assertion.account)) {
+    if (
+      (assertion.type === "tokenBalance" || assertion.type === "ethBalance") &&
+      isAddress(assertion.account)
+    ) {
       assertion.account = assertion.account.toLowerCase();
     }
     if (assertion.type === "allowance") {
@@ -64,7 +67,9 @@ export function validateManifest(input: unknown): WorldManifest {
 
   for (const [i, assertion] of manifest.assertions.entries()) {
     const where = `assertions[${i}] (${assertion.type})`;
-    requireContract(assertion.contractId, where);
+    // Most assertions target a contract; `ethBalance` (native) does not.
+    if ("contractId" in assertion) requireContract(assertion.contractId, where);
+    if (assertion.type === "ethBalance") requireRecipient(assertion.account, where);
     if (assertion.type === "tokenBalance") requireRecipient(assertion.account, where);
     if (assertion.type === "allowance") {
       requireRecipient(assertion.owner, where);

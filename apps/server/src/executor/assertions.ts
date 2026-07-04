@@ -3,7 +3,7 @@ import type { Runtime } from "../runtime/runtime.js";
 import { maxUint256 } from "viem";
 import { functionAbi, readFunction } from "./calls.js";
 import { readAllowanceRaw, readTokenBalanceRaw } from "./tokens.js";
-import { fromTokenUnits, toTokenUnits, toTokenUnitsOrMax } from "./units.js";
+import { fromTokenUnits, fromWei, toTokenUnits, toTokenUnitsOrMax, toWei } from "./units.js";
 
 /**
  * Normalize a call result (or the expected string) for stable equality, guided
@@ -68,6 +68,18 @@ export async function evaluateAssertion(
         passed,
         expected: assertion.expected === "max" ? "max" : `${assertion.expected} ${contract.symbol}`,
         actual: fmt(actualRaw),
+      };
+    }
+    case "ethBalance": {
+      const address = runtime.resolveAddress(assertion.account);
+      const actualWei = await runtime.getPublicClient().getBalance({ address });
+      const expectedWei = toWei(assertion.expected);
+      return {
+        description:
+          assertion.description ?? `${assertion.account} holds ${assertion.expected} ETH`,
+        passed: actualWei === expectedWei,
+        expected: `${assertion.expected} ETH`,
+        actual: `${fromWei(actualWei)} ETH`,
       };
     }
     case "callResult": {
