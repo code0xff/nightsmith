@@ -66,6 +66,10 @@ function findFunctions(abi: AbiItem[], name: string): AbiItem[] {
   return abi.filter((i) => i.type === "function" && i.name === name);
 }
 
+function findEvents(abi: AbiItem[], name: string): AbiItem[] {
+  return abi.filter((i) => i.type === "event" && i.name === name);
+}
+
 function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnings: string[]): void {
   if (!("contractId" in action)) return; // chain-control actions (mine) target no contract
   const entry = contracts.get(action.contractId);
@@ -137,6 +141,13 @@ function checkAssertion(
   if (assertion.type === "allowance") {
     if (findFunctions(abi, "allowance").length === 0) {
       warnings.push(`${assertion.contractId} has no allowance() — cannot check an allowance`);
+    }
+    return;
+  }
+
+  if (assertion.type === "event") {
+    if (findEvents(abi, assertion.event).length === 0) {
+      warnings.push(`${assertion.contractId} has no "${assertion.event}" event in its ABI`);
     }
     return;
   }

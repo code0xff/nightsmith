@@ -229,11 +229,30 @@ export const EthBalanceAssertion = z.object({
   description: z.string().optional(),
 });
 
+/**
+ * Assert a contract emitted an event during execution. `args` optionally filters
+ * by named event arg (indexed or not); `count` asserts an exact number of
+ * matching emissions (default: at least one).
+ */
+export const EventAssertion = z.object({
+  type: z.literal("event"),
+  contractId: Identifier,
+  /** Event name in the contract's ABI. */
+  event: z.string().min(1),
+  /** Optional expected values for named event args (a named account resolves to
+   *  its address for address-typed args). */
+  args: z.record(z.string(), ArgValue).default({}),
+  /** Exact number of matching emissions; omit to assert at least one. */
+  count: z.number().int().min(0).optional(),
+  description: z.string().optional(),
+});
+
 export const Assertion = z.discriminatedUnion("type", [
   TokenBalanceAssertion,
   CallResultAssertion,
   AllowanceAssertion,
   EthBalanceAssertion,
+  EventAssertion,
 ]);
 export type Assertion = z.infer<typeof Assertion>;
 

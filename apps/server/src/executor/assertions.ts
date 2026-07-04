@@ -1,6 +1,6 @@
-import type { Assertion, AssertionResult } from "@nightsmith/shared";
+import { isAddress, type Assertion, type AssertionResult } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
-import { maxUint256 } from "viem";
+import { maxUint256, type AbiEvent } from "viem";
 import { functionAbi, readFunction } from "./calls.js";
 import { readAllowanceRaw, readTokenBalanceRaw } from "./tokens.js";
 import { fromTokenUnits, fromWei, toTokenUnits, toTokenUnitsOrMax, toWei } from "./units.js";
@@ -100,6 +100,56 @@ export async function evaluateAssertion(
         passed: actual === expected,
         expected: assertion.expected,
         actual,
+      };
+    }
+    case "event": {
+      const contract = runtime.getContract(assertion.contractId);
+      const eventAbi = contract.abi.find(
+        (i) =>
+          (i as { type?: string }).type === "event" &&
+          (i as { name?: string }).name === assertion.event,
+      ) as AbiEvent | undefined;
+      const filters = Object.entries(assertion.args);
+      const filterDesc = filters.length
+        ? ` where ${filters.map(([k, v]) => `${k}=${v}`).join(", ")}`
+        : "";
+      const target = assertion.count !== undefined ? `exactly ${assertion.count}` : "at least 1";
+      const description =
+        assertion.description ?? `${assertion.contractId} emits ${assertion.event}${filterDesc}`;
+      if (!eventAbi) {
+        return {
+          description,
+          passed: false,
+          expected: `${target} ${assertion.event} event(s)`,
+          actual: `no "${assertion.event}" event in ${assertion.contractId}'s ABI`,
+        };
+      }
+      const logs = await runtime.getPublicClient().getLogs({
+        address: contract.address,
+        event: eventAbi,
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+      const inputs = (eventAbi.inputs ?? []) as { name?: string; type?: string }[];
+      const matches = logs.filter((log) => {
+        const la = (log as { args?: Record<string, unknown> }).args ?? {};
+        return filters.every(([name, expected]) => {
+          const type = inputs.find((i) => i.name === name)?.type;
+          // A named account in an address-typed arg resolves to its address.
+          const exp =
+            type === "address" && typeof expected === "string" && !isAddress(expected)
+              ? runtime.resolveAddress(expected)
+              : expected;
+          return normalizeTyped(la[name], type) === normalizeTyped(exp, type);
+        });
+      });
+      const count = matches.length;
+      const passed = assertion.count !== undefined ? count === assertion.count : count >= 1;
+      return {
+        description,
+        passed,
+        expected: `${target} ${assertion.event} event(s)`,
+        actual: `${count} emitted`,
       };
     }
     default: {

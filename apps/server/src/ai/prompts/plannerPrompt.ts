@@ -55,7 +55,8 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
     "assertions": [
       { "type": "tokenBalance", "contractId": string, "account": string, "expected": string } |
       { "type": "ethBalance", "account": string, "expected": string } |
-      { "type": "allowance", "contractId": string, "owner": string, "spender": string, "expected": string | "max" }
+      { "type": "allowance", "contractId": string, "owner": string, "spender": string, "expected": string | "max" } |
+      { "type": "event", "contractId": string, "event": string, "args"?: { [name: string]: value }, "count"?: number }
     ]
   },
   "control": null | { "kind": "start"|"stop"|"replay"|"resume"|"export" },
@@ -66,6 +67,8 @@ export const PLANNER_JSON_CONTRACT = `Return ONLY a JSON object with this shape:
 Rules: amounts are decimal strings in human units. The deployer is account index 0. Every action/assertion must reference contracts declared in the manifest.
 
 Native ETH: each account's "fundEth" is its STARTING ETH balance, a decimal ether string. Use "0" to leave Anvil's default (~10000 ETH, so the account still holds gas). When the user asks to start an account with a specific amount of ETH (e.g. "Alice starts with 100 ETH", "give Bob 100 ETH"), set that account's "fundEth" to the exact amount ("100") — a non-zero value sets the balance absolutely (it may raise or lower it). Do NOT add a mint/transfer action for native ETH; funding is expressed only through "fundEth". To verify a native ETH balance, use an "ethBalance" assertion (exact, in ether) — prefer it on accounts that only receive, since a sender pays gas. For createWorld/modifyWorld/extendWorld/runScenario set "manifest" and leave control/explanation null. For extendWorld the manifest must be the previous one with new actions appended at the end (prior actions unchanged). For control set "control" only. For explain set "explanation" only.
+
+Events: to verify an event was emitted use an "event" assertion — "event" is the event name in the contract's ABI. Optionally filter by "args" (named event args; a named account resolves to its address for address args) and/or "count" (exact number of emissions; omit for at least one, use 0 to assert it was NOT emitted). E.g. verify Alice received: { "type":"event", "contractId":"usdc", "event":"Transfer", "args": { "to": "Alice" } }.
 
 Time / blocks: for time-dependent tests (vesting, timelocks, cooldowns) use a "mine" action. "advance time by 1 day" → { "type":"mine", "secondsDelta":86400 } (mines 1 block so the new timestamp takes effect); "mine 5 blocks" → { "type":"mine", "blocks":5 }. secondsDelta is whole seconds; it references no contract.
 

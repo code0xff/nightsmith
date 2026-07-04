@@ -69,6 +69,7 @@ function assertionDescriptions(manifest: WorldManifest): string[] {
     if (a.type === "tokenBalance") return `${a.account} = ${a.expected}`;
     if (a.type === "ethBalance") return `${a.account} = ${a.expected} ETH`;
     if (a.type === "allowance") return `allowance ${a.owner}->${a.spender} = ${a.expected}`;
+    if (a.type === "event") return `${a.contractId} emits ${a.event}`;
     return `${a.function}() = ${a.expected}`; // callResult
   });
 }

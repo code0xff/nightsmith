@@ -57,16 +57,21 @@ export function diffManifests(
     if (a.type === "tokenBalance") return `tokenBalance:${a.account}:${a.contractId}`;
     if (a.type === "ethBalance") return `ethBalance:${a.account}`;
     if (a.type === "allowance") return `allowance:${a.owner}->${a.spender}:${a.contractId}`;
+    if (a.type === "event") return `event:${a.event}:${a.contractId}`;
     return `callResult:${a.function}:${a.contractId}`;
   };
-  const beforeAsserts = new Map(before.assertions.map((a) => [assertKey(a), a.expected]));
+  // The compared "value" of an assertion — event assertions carry no `expected`.
+  const assertValue = (a: WorldManifest["assertions"][number]): string =>
+    "expected" in a ? String(a.expected) : `${a.event}×${a.count ?? "≥1"}`;
+  const beforeAsserts = new Map(before.assertions.map((a) => [assertKey(a), assertValue(a)]));
   for (const a of after.assertions) {
     const prev = beforeAsserts.get(assertKey(a));
-    if (prev !== a.expected) {
+    const value = assertValue(a);
+    if (prev !== value) {
       changes.push({
         path: `assert:${assertKey(a)}`,
         before: prev ?? "(none)",
-        after: a.expected,
+        after: value,
       });
     }
   }
