@@ -38,12 +38,30 @@ export async function setBalance(
   });
 }
 
-/** Advance the next block's timestamp by `seconds` (test-only). */
-export async function increaseTime(client: PublicClient, seconds: number): Promise<void> {
-  await raw(client)({ method: "evm_increaseTime", params: [seconds] });
+/**
+ * Set the exact timestamp (seconds) of the next mined block. Used instead of
+ * evm_increaseTime because a fixed block-timestamp interval (for determinism)
+ * ignores increaseTime; an absolute next-timestamp still takes effect.
+ */
+export async function setNextBlockTimestamp(
+  client: PublicClient,
+  timestampSec: number,
+): Promise<void> {
+  await raw(client)({ method: "evm_setNextBlockTimestamp", params: [timestampSec] });
 }
 
 /** Mine `blocks` block(s) immediately (test-only). */
 export async function mineBlocks(client: PublicClient, blocks: number): Promise<void> {
   await raw(client)({ method: "anvil_mine", params: [numberToHex(blocks)] });
+}
+
+/**
+ * Fix the seconds added to each new block's timestamp, so block times are a pure
+ * function of the block height (not wall-clock) and replays are deterministic.
+ */
+export async function setBlockTimestampInterval(
+  client: PublicClient,
+  seconds: number,
+): Promise<void> {
+  await raw(client)({ method: "anvil_setBlockTimestampInterval", params: [seconds] });
 }

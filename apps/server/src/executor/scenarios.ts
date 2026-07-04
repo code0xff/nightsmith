@@ -1,6 +1,6 @@
 import type { Action, MineAction, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
-import { increaseTime, mineBlocks } from "../anvil/snapshot.js";
+import { mineBlocks, setNextBlockTimestamp } from "../anvil/snapshot.js";
 import { callFunction } from "./calls.js";
 import { deployArtifact, deployMockErc20 } from "./contracts.js";
 import { approve, mint, refreshAllTokenBalances, transfer } from "./tokens.js";
@@ -26,7 +26,12 @@ export function describeAction(action: Action): string {
 /** Advance time and/or mine blocks against the running Anvil. */
 async function runMine(runtime: Runtime, action: MineAction): Promise<void> {
   const client = runtime.getPublicClient();
-  if (action.secondsDelta > 0) await increaseTime(client, action.secondsDelta);
+  if (action.secondsDelta > 0) {
+    // Absolute next timestamp = current + delta (deterministic: current is a
+    // function of block height under the fixed interval, not wall-clock).
+    const current = await client.getBlock();
+    await setNextBlockTimestamp(client, Number(current.timestamp) + action.secondsDelta);
+  }
   await mineBlocks(client, action.blocks);
   await runtime.refreshChainStatus();
   runtime.log(

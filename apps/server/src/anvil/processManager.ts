@@ -9,6 +9,9 @@ export interface AnvilOptions {
   chainId: number;
   mnemonic: string;
   forkUrl?: string | null;
+  /** Fixed genesis block timestamp (seconds). Set for local worlds so time is
+   *  deterministic across replays; omitted when forking (the fork block sets it). */
+  timestamp?: number;
 }
 
 export type AnvilLogHandler = (line: string, stream: "out" | "err") => void;
@@ -53,6 +56,9 @@ export class AnvilProcess {
     ];
     if (this.options.forkUrl) {
       args.push("--fork-url", this.options.forkUrl);
+    }
+    if (this.options.timestamp !== undefined) {
+      args.push("--timestamp", String(this.options.timestamp));
     }
 
     this.proc = execa(locateAnvil(), args, {

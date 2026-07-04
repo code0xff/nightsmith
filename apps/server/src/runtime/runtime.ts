@@ -18,8 +18,12 @@ import {
 import { AnvilProcess } from "../anvil/processManager.js";
 import { assertAnvilInstalled } from "../anvil/preflight.js";
 import { getChainStatus } from "../anvil/status.js";
-import { revertSnapshot, takeSnapshot } from "../anvil/snapshot.js";
+import { revertSnapshot, setBlockTimestampInterval, takeSnapshot } from "../anvil/snapshot.js";
 import { ANVIL_MNEMONIC } from "../config.js";
+
+/** Fixed genesis timestamp for local worlds (2023-11-14T22:13:20Z) — keeps
+ *  block times deterministic across replays instead of tracking wall-clock. */
+const GENESIS_TIMESTAMP = 1_700_000_000;
 import { AppError } from "../utils/errors.js";
 import { Mutex } from "../utils/mutex.js";
 import { EventBus } from "./bus.js";
@@ -299,6 +303,10 @@ export class Runtime {
       chainId: network.chainId,
       mnemonic: this.mnemonic,
       forkUrl: network.forkUrl,
+      // Local worlds get a fixed genesis timestamp; forks inherit the fork
+      // block's time. Combined with a fixed per-block interval (below), block
+      // timestamps become a deterministic function of height, not wall-clock.
+      timestamp: network.forkUrl ? undefined : GENESIS_TIMESTAMP,
     });
 
     try {
@@ -313,6 +321,13 @@ export class Runtime {
     this.anvil = anvil;
     this.chain = makeChain(network.chainId, anvil.rpcUrl);
     this.publicClient = makePublicClient(this.chain, anvil.rpcUrl);
+
+    // Deterministic block time for local worlds: each block's timestamp becomes
+    // genesis + height, independent of wall-clock, so the same manifest replays
+    // to identical timestamps. Forks keep their live/forked time.
+    if (!network.forkUrl) {
+      await setBlockTimestampInterval(this.publicClient, 1);
+    }
 
     const status = await getChainStatus(this.publicClient);
     this.patchLocalnet({
