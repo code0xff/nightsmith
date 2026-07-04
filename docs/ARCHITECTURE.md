@@ -35,16 +35,16 @@ Vite + React + shadcn/ui (neutral theme). Compact, monochrome, developer-tool st
 Fastify server that:
 
 - serves the built web UI,
-- exposes a REST API (`prompt`, `execute`, `localnet`, `sessions`, `export`),
-- streams logs and state over `/ws`,
+- exposes a REST API (`prompt`, `execute`, `localnet`, `sessions`, `export`, `import`, `artifacts` incl. `artifacts/compile`),
+- streams logs and state (and compile progress) over `/ws`,
 - manages the Anvil process lifecycle,
-- persists sessions, manifests, deployments, logs, and reports.
+- persists sessions, manifests, deployments, logs, reports, and compiled artifacts.
 
-Also ships the `nightsmith` CLI (`serve`, `stop`, `export`, `replay`, `doctor`) as a launcher/automation layer.
+Also ships the `nightsmith` CLI (`serve`, `stop`, `compile`, `doctor`, `export`, `import`, `replay`, `clean`) as a launcher/automation layer.
 
 ### 3. AI Planner (`apps/server/src/ai`)
 
-Converts natural language into a structured, reviewable **plan**. It **does not execute** anything. It supports a provider interface; the MVP ships a deterministic **mock** provider plus `openai`/`anthropic` stubs. The planner never receives private keys or secrets.
+Converts natural language into a structured, reviewable **plan**. It **does not execute** anything. It exposes a provider interface with four backends — **OpenAI** (HTTP), the **Codex CLI**, the **Claude Code CLI**, and a deterministic offline **mock** — selected automatically by availability or pinned via `NIGHTSMITH_AI_PROVIDER`. The planner never receives private keys or secrets.
 
 ### 4. Manifest (`packages/shared`)
 
@@ -56,7 +56,7 @@ Enforces local-only execution, rejects public-network broadcasting unless explic
 
 ### 6. Executor (`apps/server/src/executor`)
 
-Deterministic engine using **viem** for RPC and **execa** for process spawning. It starts/stops Anvil, creates and funds named accounts, deploys contracts from the precompiled artifact, mints/transfers tokens, runs scenarios, evaluates assertions, and emits log/state events.
+Deterministic engine using **viem** for RPC and **execa** for process spawning. It starts/stops Anvil (with a fixed genesis + block interval so time is reproducible), creates and funds named accounts, deploys contracts (the precompiled MockERC20, or user contracts as inlined artifacts), mints/transfers/approves tokens, calls functions (signing as a named account or impersonating an address), advances time/blocks, evaluates assertions (balances, allowances, ETH, call results, emitted events), and emits log/state events. User Solidity is compiled to an artifact by a separate **compile** step (`artifacts/compile.ts`, `forge build`), so the executor itself never runs `solc`.
 
 ### 7. Session Store (`apps/server/src/sessions`)
 
@@ -74,6 +74,6 @@ File-based store under `~/.nightsmith/sessions/<id>/` holding the manifest, depl
 
 ## Key decisions
 
-- **Precompiled contract artifact**: `packages/contracts` ships `MockERC20.sol` plus a committed bytecode/ABI JSON; the executor deploys via viem with no `solc` at runtime — fast and deterministic.
+- **Precompiled built-in, runtime-compiled user contracts**: `packages/contracts` ships `MockERC20.sol` plus a committed bytecode/ABI JSON (deployed via viem, no runtime `solc`). Bring-your-own contracts are compiled on demand with `forge build` (a `.sol` file, a Foundry project, or a `.zip`) and inlined into the manifest as an artifact — so the compile happens once and replay/import stay `forge`-free and deterministic.
 - **Single WebSocket**: logs and state snapshots are multiplexed over one `/ws` connection to keep the client simple.
 - **Shared schemas**: all manifest/event/API shapes live in `packages/shared` and are validated with zod at every boundary.

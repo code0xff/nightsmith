@@ -19,9 +19,23 @@ Nightsmith turns developer intent into a running local blockchain world. Describ
 
 Local devnet setup means hand-writing YAML, shell scripts, and deploy code. Nightsmith makes **natural language the interface** and a **generated manifest the source of truth** — so you describe intent, review the plan, and get a deterministic, replayable world.
 
-## Status
+## What you can do
 
-MVP in progress. The first supported flow is the USDC payment demo above.
+Describe a world in plain language; Nightsmith plans, confirms, and runs it:
+
+- **Tokens** — mock USDC/DAI/WETH (MockERC20) with mint, transfer, `approve`,
+  and balance / allowance assertions.
+- **Your own contracts** — **compile Solidity at runtime** (a `.sol` file, a
+  Foundry project, or a `.zip` — with `node_modules`/OpenZeppelin imports), or
+  upload a precompiled artifact; then deploy (constructor args incl. structs),
+  call any function, and verify results and **emitted events**.
+- **Native ETH** — set an account's starting balance and assert exact ETH.
+- **Time & blocks** — advance time and mine blocks for vesting / timelock tests
+  (block time is deterministic, so replays reproduce exactly).
+- **Impersonation** — send a tx *as* an arbitrary address (act as a user, or a
+  whale on a fork).
+- **Inspect · replay · export** — every world is saved, reproducible, and
+  portable.
 
 ## Quick start
 

@@ -33,6 +33,7 @@ pnpm typecheck        # typecheck all packages
 pnpm dev              # run the local server in watch mode
 pnpm dev:web          # run the web dev server (proxies /api,/ws to server)
 pnpm demo             # headless demo: prompt -> plan -> execute, asserts Bob = 110 USDC
+pnpm test             # vitest (server compile-security + happy-path suite)
 ```
 
 CLI (from `apps/server`, exposed as `nightsmith`):
@@ -40,9 +41,12 @@ CLI (from `apps/server`, exposed as `nightsmith`):
 ```bash
 nightsmith serve      # start server + serve web UI on http://localhost:4040
 nightsmith stop       # stop a running localnet
+nightsmith compile    # compile a .sol / Foundry project with forge and store it
 nightsmith export     # export a session manifest
+nightsmith import     # import a manifest file and replay it
 nightsmith replay     # replay a saved session
 nightsmith doctor     # check anvil/forge/cast availability and ports
+nightsmith clean      # delete all saved sessions + uploaded contracts
 ```
 
 ## Conventions
@@ -50,8 +54,8 @@ nightsmith doctor     # check anvil/forge/cast availability and ports
 - TypeScript everywhere, ESM (`"type": "module"`), `strict` on.
 - `packages/shared` is the **only** place to define manifest/event/API shapes. Import from `@nightsmith/shared`; never duplicate a type.
 - All cross-boundary data is validated with **zod** at the edge (route handlers, planner output, manifest load).
-- The executor is **deterministic**: same manifest → same world. No randomness, no wall-clock branching.
-- Contracts are deployed from the **precompiled artifact** in `packages/contracts` via viem — no `solc` at runtime.
+- The executor is **deterministic**: same manifest → same world. No randomness, no wall-clock branching. Local block timestamps are a pure function of block height (fixed genesis + per-block interval), so time-dependent worlds (`mine`) replay identically.
+- The built-in **MockERC20** deploys from a **precompiled artifact** in `packages/contracts` via viem (no runtime solc). User contracts are **compiled at runtime with `forge build`** (`apps/server/src/artifacts/compile.ts`) into the same `artifact` shape (abi+bytecode inlined into the manifest, so replay/import never need the source or `forge`). Compilation is `forge build` only — never `test`/`script`/`ffi`; untrusted zips are sandboxed (writes confined, no compiler-by-path, `.env` stripped, size/symlink guards).
 - Commits are small, buildable units with conventional-commit prefixes (`feat`, `fix`, `chore`, `docs`).
 
 ## Safety rules (non-negotiable)

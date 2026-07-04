@@ -39,6 +39,14 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
   being used in filesystem paths.
 - **Revert handling**: a reverted deploy/mint/transfer fails the step loudly
   rather than being silently treated as success.
+- **Sandboxed compilation**: user Solidity is compiled with `forge build` only —
+  never `forge test`/`script`, never `ffi`, so no contract code runs at compile
+  time. An untrusted uploaded project can't escape: forge's write paths are
+  forced into a private scratch dir, a compiler selected by filesystem path is
+  rejected, `.env` files are stripped, `remappings`/`libs` that escape the project
+  are rejected, and zip uploads are capped (size / entry count) with symlink
+  entries rejected before extraction. Impersonation (`from`/`owner` = a `0x`
+  address) is a local test tool and never changes that address's ETH balance.
 
 ## Opt-in escapes (use deliberately)
 
@@ -46,7 +54,8 @@ are enforced in code (`apps/server/src/safety/`), not just documented.
 | --- | --- |
 | `NIGHTSMITH_ALLOW_FORK=true` | Permit `network.forkUrl` (fork a remote chain) |
 | `NIGHTSMITH_ALLOW_BROADCAST=true` | Permit `network.broadcast` beyond the local node |
-| `OPENAI_API_KEY=sk-…` | Enable the OpenAI provider (otherwise: Codex if installed, else mock) |
+| `OPENAI_API_KEY=sk-…` | Enable the OpenAI provider (otherwise: Codex/Claude CLI if installed, else mock) |
+| `NIGHTSMITH_AI_PROVIDER=…` | Pin the planner (`mock`/`openai`/`codex`/`claude`) instead of auto-selecting |
 
 These exist for advanced, deliberate use. The defaults are local-only and
 secret-free.

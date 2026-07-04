@@ -95,6 +95,10 @@ process (it streams logs/state over `ws://localhost:4040/ws`).
 - "Create a local USDC payment test world with Alice and Bob"
 - "Then Alice sends Bob 25 USDC" — append onto the running world (extend)
 - "Also mint 500 USDC to Carol" — append a new account + action (extend)
+- "Give Alice 100 ETH and Bob 100 ETH, then Alice approves Bob for max USDC"
+- "Deploy my MyVault contract, have Alice deposit 100, and verify a Deposit event"
+- "Advance time by 30 days, then check the vesting balance"
+- "Send 1000 USDC from 0x… (impersonate that address) to Bob"
 - "Replay the last scenario"
 - "Explain why the last transaction reverted"
 - "Stop the localnet"
@@ -121,14 +125,15 @@ pnpm dev:web    # Vite dev server on :4042, proxies /api and /ws to :4040
 pnpm demo       # headless prompt -> plan -> execute (asserts Bob = 110 USDC)
 pnpm --filter @nightsmith/server demo:extend  # create then extend live (Bob = 135)
 pnpm typecheck  # typecheck all packages
+pnpm test       # vitest (compile security + happy paths; skips if forge/zip/unzip absent)
 ```
 
 In dev, run `pnpm dev` and `pnpm dev:web` in two terminals and open the Vite URL.
 
 ## CLI
 
-The subcommands below (`serve`, `stop`, `doctor`, `export`, `import`, `replay`,
-`clean`) all live on one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it
+The subcommands below (`serve`, `stop`, `compile`, `doctor`, `export`, `import`,
+`replay`, `clean`) all live on one `nightsmith` binary (`apps/server/dist/cli.js`). In this monorepo it
 isn't on `PATH` by default — run it via `pnpm --filter @nightsmith/server exec node
 dist/cli.js <command>`, or `./nightsmith.sh <command>` (Docker) / `./run-local.sh`
 for the zero-setup wrappers. A global install (`npm i -g @nightsmith/server`,
@@ -137,6 +142,8 @@ once published) would put the bare `nightsmith` command below on `PATH`.
 ```bash
 nightsmith serve              # start server + web cockpit
 nightsmith stop               # stop the running localnet (talks to the server)
+nightsmith compile <path> [--contract <Name>] [--name <artifactName>] [--root <dir>]
+                              # compile a .sol / Foundry project with forge and store it
 nightsmith doctor             # check toolchain + ports
 nightsmith export <sessionId> [-o file.json]   # export a session's manifest
 nightsmith import <file.json> # import a manifest file and replay it as a new session
@@ -162,8 +169,10 @@ contracts — for a fresh slate; it prompts for confirmation (skip with `-y`/
 
 ## AI provider
 
-The planner is selected **automatically by availability** — there is no manual
-selection. The order is:
+The planner is selected **automatically by availability**, or **pinned** with
+`NIGHTSMITH_AI_PROVIDER` (`mock` | `openai` | `codex` | `claude`). When pinned,
+only that provider is used — no silent fallback — and an unavailable choice fails
+with a clear error. Unset, the order is: 
 
 1. **OpenAI** — used if an OpenAI API key is set.
 2. **Codex CLI** — used if `codex` is on your PATH (no key; reuses your existing
@@ -179,6 +188,8 @@ The cockpit header's **AI** badge shows which provider is active; click it to se
 the resolution. The only configuration is the OpenAI key, set via the
 environment — Nightsmith never stores it on disk or accepts it through the UI:
 
+- `NIGHTSMITH_AI_PROVIDER` — pin a provider (`mock`/`openai`/`codex`/`claude`)
+  instead of auto-selecting.
 - `OPENAI_API_KEY` — enables the OpenAI provider (in your `.env` or shell), then
   restart the server.
 - Model: `NIGHTSMITH_OPENAI_MODEL` (default `gpt-5.5`).
@@ -207,6 +218,7 @@ plan; the deterministic executor still runs it after validation and confirmation
 | `NIGHTSMITH_WEB_PORT` | `4042` | Vite dev-server port (`pnpm dev:web`) |
 | `NIGHTSMITH_WEB_HOST` | `127.0.0.1` | Vite dev-server bind address (set `0.0.0.0` or `true` for LAN) |
 | `NIGHTSMITH_DATA_DIR` | `~/.nightsmith` | Session store location |
+| `NIGHTSMITH_AI_PROVIDER` | — | Pin the planner (`mock`/`openai`/`codex`/`claude`); unset = auto by availability |
 | `OPENAI_API_KEY` | — | OpenAI key (enables the OpenAI provider; overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
 | `NIGHTSMITH_CLAUDE_MODEL` | — | Model for the Claude CLI planner fallback (alias or full name; defaults to the CLI's own default) |
