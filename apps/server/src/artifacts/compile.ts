@@ -339,6 +339,9 @@ async function compileFromZip(input: CompileArtifactRequest): Promise<UploadedAr
     const dest = ensureDir(join(tmp, "project"));
     writeFileSync(zipPath, buf);
     await assertZipWithinLimits(zipPath);
+    // Reject symlink entries BEFORE extracting — a post-extraction audit is too
+    // late (unzip could follow a symlink written earlier to escape `dest`).
+    await assertNoSymlinkEntries(zipPath);
     // `unzip` refuses absolute/`..` paths; -o overwrite, -q quiet, -d dest.
     const res = await execa("unzip", ["-o", "-q", zipPath, "-d", dest], {
       timeout: 60_000,
@@ -388,7 +391,24 @@ async function assertZipWithinLimits(zipPath: string): Promise<void> {
   }
 }
 
-/** Zip-slip defense: no extracted entry may be a symlink escaping `dest`. */
+/**
+ * Reject any symlink entry in the archive BEFORE extraction. zipinfo
+ * (`unzip -Z`) prints a unix mode per entry; a leading "l" marks a symlink.
+ * Foundry projects don't need symlinks, so refusing them removes the
+ * extract-time traversal risk entirely (no symlink is ever written).
+ */
+async function assertNoSymlinkEntries(zipPath: string): Promise<void> {
+  const res = await execa("unzip", ["-Z", zipPath], { timeout: 30_000, reject: false });
+  if (res.exitCode !== 0) return; // readability/size already validated
+  for (const line of res.stdout.split("\n")) {
+    if (/^l[-rwxsStT]{9}\b/.test(line)) {
+      throw new AppError("Archive contains a symlink entry, which is not allowed.", 400);
+    }
+  }
+}
+
+/** Zip-slip defense (belt-and-suspenders): no extracted entry may be a symlink
+ *  escaping `dest`. Primary defense is rejecting symlinks pre-extraction. */
 function assertNoEscape(dest: string): void {
   const root = resolve(dest);
   const stack = [root];
