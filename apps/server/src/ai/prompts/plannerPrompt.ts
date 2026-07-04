@@ -74,7 +74,35 @@ Custom contracts: to deploy a user-uploaded contract, add a contract { "id": "..
 Example (prompt: "Alice has 1000 USDC, Bob has 100 USDC, Alice sends Bob 10 USDC, verify"):
 {"intent":"createWorld","summary":"Local USDC world; Alice 1000, Bob 100; Alice sends Bob 10; verify balances.","assumptions":["USDC is a local MockERC20 (6 decimals)."],"steps":["Start local Anvil","Create accounts: deployer, Alice, Bob","Deploy usdc","Mint 1000 to Alice","Mint 100 to Bob","Transfer 10 Alice -> Bob"],"expectedStateChanges":["Alice: 990 USDC","Bob: 110 USDC"],"assertions":["Alice holds 990 USDC","Bob holds 110 USDC"],"safetyNotes":["Local Anvil only.","MockERC20, not a real token."],"manifest":{"version":1,"name":"USDC payment world","createdAt":"2026-01-01T00:00:00.000Z","network":{"kind":"anvil-local","chainId":31337,"port":8545,"forkUrl":null,"broadcast":false},"accounts":[{"name":"deployer","addressIndex":0,"fundEth":"0"},{"name":"Alice","addressIndex":1,"fundEth":"0"},{"name":"Bob","addressIndex":2,"fundEth":"0"}],"contracts":[{"id":"usdc","kind":"MockERC20","name":"Mock USDC","symbol":"USDC","decimals":6}],"actions":[{"type":"deployContract","contractId":"usdc","deployer":"deployer"},{"type":"mint","contractId":"usdc","to":"Alice","amount":"1000"},{"type":"mint","contractId":"usdc","to":"Bob","amount":"100"},{"type":"transfer","contractId":"usdc","from":"Alice","to":"Bob","amount":"10"}],"assertions":[{"type":"tokenBalance","contractId":"usdc","account":"Alice","expected":"990"},{"type":"tokenBalance","contractId":"usdc","account":"Bob","expected":"110"}]},"control":null,"explanation":null,"uiPreview":{"title":"Create USDC world","description":"Alice 1000, Bob 100, transfer 10","accent":"default"}}`;
 
-/** Compact ABI summary of uploaded artifacts, appended to the user turn. */
+/** Per-artifact source excerpt cap (chars) — keep the enrichment token-lean. */
+const SOURCE_EXCERPT_CHARS = 1000;
+
+type NatspecDoc = {
+  notice?: string;
+  methods?: Record<string, { notice?: string; details?: string }>;
+};
+
+/** Compact, high-signal NatSpec lines (contract notice + per-function notices). */
+function natspecLines(natspec: import("@nightsmith/shared").UploadedArtifact["natspec"]): string[] {
+  if (!natspec) return [];
+  const ud = natspec.userdoc as NatspecDoc | undefined;
+  const dd = natspec.devdoc as NatspecDoc | undefined;
+  const out: string[] = [];
+  if (ud?.notice) out.push(`    doc: ${ud.notice}`);
+  const sigs = new Set([...Object.keys(ud?.methods ?? {}), ...Object.keys(dd?.methods ?? {})]);
+  for (const s of sigs) {
+    const note = ud?.methods?.[s]?.notice ?? dd?.methods?.[s]?.details;
+    if (note) out.push(`    ${s}: ${note}`);
+  }
+  return out;
+}
+
+/**
+ * Contracts available to the planner. ABI-first: the signatures are the primary
+ * signal. For contracts compiled from source we add NatSpec (the high-signal
+ * excerpt) and a small capped raw-source excerpt so the model can disambiguate
+ * intent/call order — never a full dump, never a replacement for the ABI.
+ */
 export function summarizeArtifacts(
   artifacts: import("@nightsmith/shared").UploadedArtifact[],
 ): string {
@@ -86,7 +114,7 @@ export function summarizeArtifacts(
     (inputs ?? []).map((p) => `${p.type}${p.name ? ` ${p.name}` : ""}`).join(", ");
   const sig = (i: { name?: string; inputs?: { type?: string; name?: string }[] }) =>
     `${i.name}(${params(i.inputs)})`;
-  const lines = artifacts.map((a) => {
+  const blocks = artifacts.map((a) => {
     const items = a.abi as Array<{
       type?: string;
       name?: string;
@@ -94,7 +122,19 @@ export function summarizeArtifacts(
     }>;
     const ctor = items.find((i) => i.type === "constructor");
     const fns = items.filter((i) => i.type === "function");
-    return `- ${a.name}: constructor(${params(ctor?.inputs)}); functions: ${fns.map(sig).join(", ") || "(none)"}`;
+    const lines = [
+      `- ${a.name}: constructor(${params(ctor?.inputs)}); functions: ${fns.map(sig).join(", ") || "(none)"}`,
+      ...natspecLines(a.natspec),
+    ];
+    if (a.source) {
+      const src = a.source.trim();
+      const excerpt =
+        src.length > SOURCE_EXCERPT_CHARS
+          ? `${src.slice(0, SOURCE_EXCERPT_CHARS)}\n… (source truncated)`
+          : src;
+      lines.push("    source (excerpt):", ...excerpt.split("\n").map((l) => `      ${l}`));
+    }
+    return lines.join("\n");
   });
-  return `Available uploaded contracts (reference by name):\n${lines.join("\n")}`;
+  return `Available uploaded contracts (reference by name; the ABI is authoritative — use NatSpec/source only to pick which functions and call order fulfill the request):\n${blocks.join("\n")}`;
 }

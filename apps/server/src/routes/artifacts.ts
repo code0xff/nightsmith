@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { ArtifactListResponse, ArtifactSummary } from "@nightsmith/shared";
+import { CompileArtifactRequest, type ArtifactListResponse, type ArtifactSummary } from "@nightsmith/shared";
 import { MockERC20 } from "@nightsmith/contracts";
 import {
   BUILTIN_MOCK_ERC20,
@@ -7,6 +7,7 @@ import {
   listArtifacts,
   saveArtifact,
 } from "../artifacts/store.js";
+import { compileSolidity } from "../artifacts/compile.js";
 
 /** Function names declared by an ABI (in declaration order). */
 function functionNames(abi: readonly unknown[]): string[] {
@@ -38,6 +39,16 @@ export function registerArtifactRoutes(app: FastifyInstance): void {
   // Body is validated (and name-sanitized) inside saveArtifact.
   app.post("/api/artifacts", async (req): Promise<ArtifactListResponse> => {
     saveArtifact(req.body);
+    return listSummaries();
+  });
+
+  // Compile a .sol (source | local path | base64 zip) with forge, then store
+  // the resulting artifact just like an upload. The compiled abi+bytecode are
+  // inlined by saveArtifact, so replay/import never need the source or forge.
+  app.post("/api/artifacts/compile", async (req): Promise<ArtifactListResponse> => {
+    const input = CompileArtifactRequest.parse(req.body);
+    const artifact = await compileSolidity(input);
+    saveArtifact(artifact);
     return listSummaries();
   });
 

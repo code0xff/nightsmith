@@ -11,7 +11,8 @@ import { Runtime } from "./runtime/runtime.js";
 import { runSavedManifest } from "./executor/runPlan.js";
 import { WorldManifest } from "@nightsmith/shared";
 import { clearAllSessions, countStoredSessions, getSession } from "./sessions/store.js";
-import { clearAllArtifacts, countStoredArtifacts } from "./artifacts/store.js";
+import { clearAllArtifacts, countStoredArtifacts, saveArtifact } from "./artifacts/store.js";
+import { compileSolidity } from "./artifacts/compile.js";
 import { dataDir } from "./utils/paths.js";
 import { errorMessage } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
@@ -116,13 +117,43 @@ program
   });
 
 program
+  .command("compile")
+  .description("Compile a Solidity file/project with forge and store it as a deployable contract")
+  .argument("<path>", "path to a .sol file or a Foundry project directory")
+  .option("-c, --contract <name>", "contract to select when the file/project has several")
+  .option("-n, --name <name>", "artifact name to store under (defaults to the contract name)")
+  .option("-r, --root <dir>", "project root override (for imports/remappings)")
+  .action(
+    async (path: string, opts: { contract?: string; name?: string; root?: string }) => {
+      try {
+        const artifact = await compileSolidity({
+          path: resolve(path),
+          contractName: opts.contract,
+          name: opts.name,
+          root: opts.root ? resolve(opts.root) : undefined,
+        });
+        saveArtifact(artifact);
+        const fns = artifact.abi
+          .filter((i) => (i as { type?: string }).type === "function")
+          .map((i) => String((i as { name?: string }).name ?? ""))
+          .filter(Boolean);
+        logger.info(`Compiled and stored "${artifact.name}" (${dataDir()}/artifacts)`);
+        logger.info(`  functions: ${fns.join(", ") || "(none)"}`);
+      } catch (err) {
+        logger.error(errorMessage(err));
+        process.exit(1);
+      }
+    },
+  );
+
+program
   .command("doctor")
   .description("Check toolchain availability and ports")
   .action(async () => {
     let ok = true;
-    // Only `anvil` is required at runtime — the server spawns it for every
-    // world. `forge`/`cast` are dev-time (artifact compilation) / diagnostic
-    // tools the running cockpit never invokes, so they're optional.
+    // `anvil` is required (every world spawns it). `forge` is required only to
+    // compile Solidity sources (`nightsmith compile` / the compile route); it's
+    // optional for anvil-only worlds. `cast` is diagnostic-only.
     const anvilVersion = await toolVersion("anvil");
     if (anvilVersion) {
       logger.info(`anvil: ${anvilVersion}`);
@@ -130,10 +161,14 @@ program
       logger.error("anvil: not found on PATH (required)");
       ok = false;
     }
-    for (const tool of ["forge", "cast"]) {
-      const version = await toolVersion(tool);
-      logger.info(version ? `${tool}: ${version}` : `${tool}: not found (optional — dev tooling only)`);
-    }
+    const forgeVersion = await toolVersion("forge");
+    logger.info(
+      forgeVersion
+        ? `forge: ${forgeVersion}`
+        : "forge: not found (required to compile .sol sources)",
+    );
+    const castVersion = await toolVersion("cast");
+    logger.info(castVersion ? `cast: ${castVersion}` : "cast: not found (optional — diagnostic only)");
     for (const [label, port] of [
       ["server", SERVER_PORT],
       ["anvil", DEFAULT_ANVIL_PORT],

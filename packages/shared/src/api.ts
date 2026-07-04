@@ -176,8 +176,44 @@ export const UploadedArtifact = z.object({
   bytecode: HexString.refine((b) => b.length > 2, {
     message: "creation bytecode must not be empty",
   }),
+  /**
+   * NatSpec docs, when the artifact was compiled from source (raw forge
+   * `userdoc`/`devdoc`). The planner uses these as a compact, high-signal
+   * excerpt of the source. Absent for precompiled-JSON uploads.
+   */
+  natspec: z
+    .object({
+      userdoc: z.record(z.string(), z.unknown()).optional(),
+      devdoc: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
+  /** Full Solidity source of the compiled contract's file (excerpted for the planner). */
+  source: z.string().optional(),
 });
 export type UploadedArtifact = z.infer<typeof UploadedArtifact>;
+
+/**
+ * Request to compile a Solidity contract at runtime and store it as an
+ * artifact. Exactly one input must be provided: inline `source`, a local
+ * `path` (a `.sol` file or a dir inside a Foundry project), or a base64 `zip`
+ * of a project. `contractName` selects one contract when a file/project has
+ * several; `name` overrides the stored artifact name (defaults to the contract).
+ */
+export const CompileArtifactRequest = z
+  .object({
+    name: z.string().min(1).max(64).optional(),
+    contractName: z.string().min(1).optional(),
+    source: z.string().min(1).optional(),
+    path: z.string().min(1).optional(),
+    /** Optional project root override for `path` mode. */
+    root: z.string().min(1).optional(),
+    /** Base64-encoded zip archive of a project (for the web multi-file path). */
+    zipBase64: z.string().min(1).optional(),
+  })
+  .refine((v) => [v.source, v.path, v.zipBase64].filter(Boolean).length === 1, {
+    message: "provide exactly one of: source, path, zipBase64",
+  });
+export type CompileArtifactRequest = z.infer<typeof CompileArtifactRequest>;
 
 export const ArtifactSummary = z.object({
   name: z.string(),

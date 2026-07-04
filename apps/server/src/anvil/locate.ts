@@ -16,3 +16,12 @@ export function locateAnvil(): string {
   const direct = join(foundryBinDir(), "anvil");
   return existsSync(direct) ? direct : "anvil";
 }
+
+/**
+ * The command to invoke forge (Foundry's compiler). Same resolution as
+ * {@link locateAnvil}: prefer ~/.foundry/bin, fall back to "forge" on PATH.
+ */
+export function locateForge(): string {
+  const direct = join(foundryBinDir(), "forge");
+  return existsSync(direct) ? direct : "forge";
+}

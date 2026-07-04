@@ -8,6 +8,7 @@ import {
   PromptResponse,
   SessionDetail,
   SessionListResponse,
+  type CompileArtifactRequest,
   type LocalnetAction,
   type Plan,
   type UploadedArtifact,
@@ -96,6 +97,11 @@ export const api = {
   getArtifacts: () => request("/api/artifacts", ArtifactListResponse),
   uploadArtifact: (body: UploadedArtifact) =>
     request("/api/artifacts", ArtifactListResponse, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  compileArtifact: (body: CompileArtifactRequest) =>
+    request("/api/artifacts/compile", ArtifactListResponse, {
       method: "POST",
       body: JSON.stringify(body),
     }),
