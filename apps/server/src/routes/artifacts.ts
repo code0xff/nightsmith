@@ -1,5 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { CompileArtifactRequest, type ArtifactListResponse, type ArtifactSummary } from "@nightsmith/shared";
+import {
+  CompileArtifactRequest,
+  type ArtifactListResponse,
+  type ArtifactSummary,
+  type InspectArtifactsResponse,
+} from "@nightsmith/shared";
 import { MockERC20 } from "@nightsmith/contracts";
 import {
   BUILTIN_MOCK_ERC20,
@@ -7,7 +12,7 @@ import {
   listArtifacts,
   saveArtifact,
 } from "../artifacts/store.js";
-import { compileSolidity } from "../artifacts/compile.js";
+import { compileSolidity, inspectSolidity } from "../artifacts/compile.js";
 import type { Runtime } from "../runtime/runtime.js";
 
 /** Function names declared by an ABI (in declaration order). */
@@ -62,6 +67,23 @@ export function registerArtifactRoutes(app: FastifyInstance, runtime: Runtime): 
       saveArtifact(artifact);
       runtime.log("success", `Compiled and stored "${artifact.name}"`, "compile");
       return listSummaries();
+    },
+  );
+
+  // Build a source/project/zip ONCE and return every deployable contract as an
+  // (unsaved) artifact, so the UI can list them and register a chosen subset via
+  // POST /api/artifacts. Same body limit + forge-log streaming as compile.
+  app.post(
+    "/api/artifacts/inspect",
+    { bodyLimit: 40 * 1024 * 1024 },
+    async (req): Promise<InspectArtifactsResponse> => {
+      const input = CompileArtifactRequest.parse(req.body);
+      runtime.log("info", "Compiling with forge…", "compile");
+      const contracts = await inspectSolidity(input, (line, level) =>
+        runtime.log(level, line, "compile"),
+      );
+      runtime.log("success", `Found ${contracts.length} deployable contract(s)`, "compile");
+      return { contracts };
     },
   );
 

@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { locateForge } from "../anvil/locate.js";
-import { compileSolidity } from "./compile.js";
+import { compileSolidity, inspectSolidity } from "./compile.js";
 
 /** Whether a CLI is runnable (skip the suite gracefully in a toolless env). */
 async function toolOk(cmd: string, args = ["--version"]): Promise<boolean> {
@@ -101,6 +101,19 @@ describe.skipIf(!canRun)("compileSolidity", () => {
     const zip = await zipDir(dir);
     const a = await compileSolidity({ zipBase64: b64(zip), contractName: "Counter" });
     expect(a.name).toBe("Counter");
+  });
+
+  it("inspect returns every deployable contract, skipping interfaces", async () => {
+    const src = `${SPDX}pragma solidity ^0.8.20;
+interface IThing { function t() external view returns (uint); }
+contract Alpha { function a() external pure returns (uint) { return 1; } }
+contract Beta { function b() external pure returns (uint) { return 2; } }
+`;
+    const found = await inspectSolidity({ source: src });
+    expect(found.map((c) => c.artifact.name)).toEqual(["Alpha", "Beta"]); // sorted, no IThing
+    expect(
+      found.every((c) => c.artifact.bytecode.startsWith("0x") && c.artifact.bytecode.length > 2),
+    ).toBe(true);
   });
 
   // ── rejections / hardening ───────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import {
   AnvilStatus,
   ArtifactListResponse,
   ExecuteResponse,
+  InspectArtifactsResponse,
   LocalnetActionResponse,
   PromptResponse,
   SessionDetail,
@@ -102,6 +103,11 @@ export const api = {
     }),
   compileArtifact: (body: CompileArtifactRequest) =>
     request("/api/artifacts/compile", ArtifactListResponse, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  inspectArtifacts: (body: CompileArtifactRequest) =>
+    request("/api/artifacts/inspect", InspectArtifactsResponse, {
       method: "POST",
       body: JSON.stringify(body),
     }),

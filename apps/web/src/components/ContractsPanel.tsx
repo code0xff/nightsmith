@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, FileCode2, FolderOpen, Lock, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import type { ArtifactSummary, CompileArtifactRequest } from "@nightsmith/shared";
+import type {
+  ArtifactSummary,
+  CompileArtifactRequest,
+  InspectArtifactsResponse,
+} from "@nightsmith/shared";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +15,12 @@ import { api, ApiRequestError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Mode = "json" | "source" | "zip";
+
+/** One deployable contract detected by a single compile (inspect flow). */
+type Candidate = InspectArtifactsResponse["contracts"][number];
+const candidateKey = (c: Candidate) => `${c.sourceFile}::${c.artifact.name}`;
+const functionCount = (abi: Candidate["artifact"]["abi"]) =>
+  abi.filter((item) => (item as { type?: string }).type === "function").length;
 
 /** Pull abi + 0x bytecode out of a pasted Foundry/Hardhat artifact (or {abi,bytecode}). */
 function parseArtifact(json: string): { abi: unknown[]; bytecode: string } {
@@ -47,17 +57,31 @@ export function ContractsPanel({
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("json");
   const [name, setName] = useState("");
-  const [contractName, setContractName] = useState("");
   const [json, setJson] = useState("");
   const [source, setSource] = useState("");
   const [path, setPath] = useState("");
   const [zipBase64, setZipBase64] = useState("");
   const [zipName, setZipName] = useState("");
   const [saving, setSaving] = useState(false);
+  // Inspect flow (source/zip): detected deployable contracts + which are checked.
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detecting, setDetecting] = useState(false);
   const mounted = useRef(true);
+  // Bumped on every input change; a detect() only applies its result if the
+  // sequence is still current, so a stale in-flight compile can't resurrect
+  // candidates for an input the user has since changed.
+  const inspectSeq = useRef(0);
   const jsonRef = useRef<HTMLInputElement>(null);
   const solRef = useRef<HTMLInputElement>(null);
   const zipRef = useRef<HTMLInputElement>(null);
+
+  /** Invalidate any detected candidates (input changed): drop them and bump the
+   *  sequence so a detect() already in flight discards its result. */
+  const invalidateCandidates = () => {
+    inspectSeq.current += 1;
+    setCandidates(null);
+  };
 
   const onJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,6 +106,7 @@ export function ContractsPanel({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    invalidateCandidates();
     const text = await file.text();
     if (!mounted.current) return;
     setSource(text);
@@ -93,6 +118,7 @@ export function ContractsPanel({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    invalidateCandidates();
     const reader = new FileReader();
     reader.onload = () => {
       if (!mounted.current) return;
@@ -123,49 +149,98 @@ export function ContractsPanel({
 
   const reset = () => {
     setName("");
-    setContractName("");
     setJson("");
     setSource("");
     setPath("");
     setZipBase64("");
     setZipName("");
+    inspectSeq.current += 1; // discard any detect in flight
+    setCandidates(null);
+    setSelected(new Set());
   };
 
-  const submit = async () => {
+  const describeErr = (err: unknown) =>
+    err instanceof ApiRequestError ? err.message : String(err);
+
+  /** Upload an already-compiled JSON artifact (json mode). */
+  const uploadJson = async () => {
     setSaving(true);
     try {
-      let next;
-      if (mode === "json") {
-        const { abi, bytecode } = parseArtifact(json);
-        next = await api.uploadArtifact({ name: name.trim(), abi: abi as never, bytecode });
-      } else {
-        const common = {
-          name: name.trim() || undefined,
-          contractName: contractName.trim() || undefined,
-        };
-        const body: CompileArtifactRequest =
-          mode === "zip"
-            ? { ...common, zipBase64 }
-            : path.trim()
-              ? { ...common, path: path.trim() }
-              : { ...common, source };
-        next = await api.compileArtifact(body);
-      }
+      const { abi, bytecode } = parseArtifact(json);
+      const next = await api.uploadArtifact({ name: name.trim(), abi: abi as never, bytecode });
       if (!mounted.current) return;
       setArtifacts(next.artifacts);
-      toast.success(mode === "json" ? "Contract uploaded" : "Contract compiled", {
-        description: name.trim() || contractName.trim() || undefined,
-      });
+      toast.success("Contract uploaded", { description: name.trim() });
       setOpen(false);
       reset();
     } catch (err) {
-      toast.error(mode === "json" ? "Upload failed" : "Compile failed", {
-        description: err instanceof ApiRequestError ? err.message : String(err),
-      });
+      toast.error("Upload failed", { description: describeErr(err) });
     } finally {
       if (mounted.current) setSaving(false);
     }
   };
+
+  /** Build the source/project/zip once and list its deployable contracts. */
+  const detect = async () => {
+    const body: CompileArtifactRequest =
+      mode === "zip" ? { zipBase64 } : path.trim() ? { path: path.trim() } : { source };
+    const seq = (inspectSeq.current += 1);
+    const current = () => mounted.current && seq === inspectSeq.current;
+    setDetecting(true);
+    try {
+      const { contracts } = await api.inspectArtifacts(body);
+      if (!current()) return; // input changed under us — discard this stale result
+      if (contracts.length === 0) {
+        toast.info("No deployable contracts found");
+        return;
+      }
+      setCandidates(contracts);
+      setSelected(new Set(contracts.map(candidateKey))); // default: all checked
+    } catch (err) {
+      if (current()) toast.error("Detect failed", { description: describeErr(err) });
+    } finally {
+      if (mounted.current) setDetecting(false);
+    }
+  };
+
+  /** Register every checked candidate via the normal save endpoint. */
+  const addSelected = async () => {
+    if (!candidates) return;
+    const chosen = candidates.filter((c) => selected.has(candidateKey(c)));
+    if (chosen.length === 0) return;
+    setSaving(true);
+    let added = 0;
+    const failures: string[] = [];
+    for (const c of chosen) {
+      try {
+        await api.uploadArtifact(c.artifact);
+        added++;
+      } catch (err) {
+        failures.push(`${c.artifact.name}: ${describeErr(err)}`);
+      }
+    }
+    if (!mounted.current) return;
+    if (added > 0) await refresh();
+    if (failures.length === 0) {
+      toast.success(`Added ${added} contract${added === 1 ? "" : "s"}`);
+      setOpen(false);
+      reset();
+    } else {
+      toast.error(`Added ${added}, ${failures.length} failed`, { description: failures.join("; ") });
+    }
+    if (mounted.current) setSaving(false);
+  };
+
+  const toggleCandidate = (key: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  const allSelected = Boolean(candidates && selected.size === candidates.length);
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set((candidates ?? []).map(candidateKey)));
 
   const remove = async (n: string) => {
     try {
@@ -179,12 +254,13 @@ export function ContractsPanel({
     }
   };
 
-  const canSubmit =
-    mode === "json"
-      ? Boolean(name.trim() && json.trim())
-      : mode === "zip"
-        ? Boolean(zipBase64)
-        : Boolean(source.trim() || path.trim());
+  const canUploadJson = Boolean(name.trim() && json.trim());
+  const canDetect =
+    mode === "zip" ? Boolean(zipBase64) : Boolean(source.trim() || path.trim());
+  const hasDuplicateNames = Boolean(
+    candidates &&
+      new Set(candidates.map((c) => c.artifact.name)).size !== candidates.length,
+  );
 
   return (
     <>
@@ -265,7 +341,10 @@ export function ContractsPanel({
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => {
+                  setMode(m);
+                  invalidateCandidates();
+                }}
                 className={cn(
                   "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
                   mode === m
@@ -278,20 +357,12 @@ export function ContractsPanel({
             ))}
           </div>
 
-          <Input
-            aria-label="Artifact name"
-            placeholder={
-              mode === "json" ? "Name (e.g. MyVault)" : "Name (optional — defaults to the contract)"
-            }
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {mode !== "json" && (
+          {mode === "json" && (
             <Input
-              aria-label="Contract name to select"
-              placeholder="Contract to select (needed if the file/project has several)"
-              value={contractName}
-              onChange={(e) => setContractName(e.target.value)}
+              aria-label="Artifact name"
+              placeholder="Name (e.g. MyVault)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
           )}
 
@@ -342,7 +413,10 @@ export function ContractsPanel({
                 aria-label="Solidity source"
                 placeholder="// SPDX-License-Identifier: MIT&#10;pragma solidity ^0.8.20;&#10;contract MyVault { ... }"
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => {
+                  setSource(e.target.value);
+                  invalidateCandidates();
+                }}
                 rows={8}
                 className="font-mono text-xs"
               />
@@ -350,7 +424,10 @@ export function ContractsPanel({
                 aria-label="Server-side path"
                 placeholder="…or a server path to a .sol / Foundry project (imports resolve)"
                 value={path}
-                onChange={(e) => setPath(e.target.value)}
+                onChange={(e) => {
+                  setPath(e.target.value);
+                  invalidateCandidates();
+                }}
                 className="font-mono text-xs"
               />
             </>
@@ -375,6 +452,44 @@ export function ContractsPanel({
             </div>
           )}
 
+          {mode !== "json" && candidates && (
+            <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2 scrollbar-thin">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{candidates.length} deployable contract{candidates.length === 1 ? "" : "s"}</span>
+                <button type="button" className="hover:text-foreground" onClick={toggleAll}>
+                  {allSelected ? "Clear all" : "Select all"}
+                </button>
+              </div>
+              {candidates.map((c) => {
+                const key = candidateKey(c);
+                return (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.has(key)}
+                      onChange={() => toggleCandidate(key)}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium">{c.artifact.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {" · "}
+                        {c.sourceFile} · {functionCount(c.artifact.abi)} fn
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+              {hasDuplicateNames && (
+                <p className="text-xs text-warning">
+                  Same-named contracts will overwrite each other when added.
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
             {mode === "json" ? (
               <>
@@ -383,8 +498,9 @@ export function ContractsPanel({
             ) : (
               <>
                 Compiled locally with <code>forge</code> and stored under{" "}
-                <code>~/.nightsmith/artifacts</code>. Imports/OpenZeppelin resolve for a project or
-                zip; a pasted single file must be self-contained.
+                <code>~/.nightsmith/artifacts</code>. Detect lists every deployable contract; check
+                the ones to add. Imports/OpenZeppelin resolve for a project or zip; a pasted single
+                file must be self-contained.
               </>
             )}
           </p>
@@ -392,15 +508,24 @@ export function ContractsPanel({
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={saving || !canSubmit}>
-              {saving
-                ? mode === "json"
-                  ? "Uploading…"
-                  : "Compiling…"
-                : mode === "json"
-                  ? "Upload"
-                  : "Compile"}
-            </Button>
+            {mode === "json" ? (
+              <Button onClick={uploadJson} disabled={saving || !canUploadJson}>
+                {saving ? "Uploading…" : "Upload"}
+              </Button>
+            ) : candidates ? (
+              <>
+                <Button variant="ghost" onClick={() => setCandidates(null)} disabled={saving}>
+                  Back
+                </Button>
+                <Button onClick={addSelected} disabled={saving || selected.size === 0}>
+                  {saving ? "Adding…" : `Add selected (${selected.size})`}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={detect} disabled={detecting || !canDetect}>
+                {detecting ? "Compiling…" : "Detect contracts"}
+              </Button>
+            )}
           </div>
         </div>
       </Dialog>

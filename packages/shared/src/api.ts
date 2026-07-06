@@ -228,6 +228,24 @@ export const ArtifactListResponse = z.object({
 });
 export type ArtifactListResponse = z.infer<typeof ArtifactListResponse>;
 
+/**
+ * Result of inspecting a compile input (POST /api/artifacts/inspect): every
+ * deployable contract found in ONE build, returned as full unsaved artifacts.
+ * The client registers a chosen subset via the normal POST /api/artifacts.
+ */
+export const InspectArtifactsResponse = z.object({
+  contracts: z
+    .array(
+      z.object({
+        artifact: UploadedArtifact,
+        /** `<File>.sol` the contract came from (disambiguates same names). */
+        sourceFile: z.string(),
+      }),
+    )
+    .default([]),
+});
+export type InspectArtifactsResponse = z.infer<typeof InspectArtifactsResponse>;
+
 // Generic error envelope
 export const ApiError = z.object({
   error: z.string(),

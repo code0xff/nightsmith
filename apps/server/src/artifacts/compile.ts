@@ -467,25 +467,67 @@ function findSourceText(root: string, fileBasename: string): string | undefined 
 
 // ── main entry ───────────────────────────────────────────────────────────────
 
+interface BuildTarget {
+  fileBasename?: string;
+  sourceText?: string;
+  buildPath?: string;
+}
+
+/** What to do with a freshly prepared project root: build it and extract. */
+type Consume<T> = (root: string, target: BuildTarget) => Promise<T>;
+
+/** A deployable contract found in a compiled project (for the inspect flow). */
+export interface InspectedContract {
+  artifact: UploadedArtifact;
+  /** `<File>.sol` the contract came from (disambiguates same-named contracts). */
+  sourceFile: string;
+}
+
 /**
- * Compile a Solidity contract with `forge` and return an artifact ready for
- * `saveArtifact()`. Accepts inline source, a local path (file or Foundry
- * project), or a base64 zip of a project — see CompileArtifactRequest.
+ * Resolve a compile request (inline source, local path, or base64 zip) into a
+ * prepared project root, then hand it to `consume` to build + extract. Shared
+ * by `compileSolidity` (extract one) and `inspectSolidity` (collect all) so the
+ * scaffolding/root-resolution/zip-hardening logic lives in one place.
+ */
+async function withProject<T>(input: CompileArtifactRequest, consume: Consume<T>): Promise<T> {
+  await assertForgeInstalled();
+  if (input.source !== undefined) {
+    return withTempProject((tmp) => {
+      const fileBasename = scaffoldStandalone(tmp, input.source!);
+      return consume(tmp, { fileBasename, sourceText: input.source });
+    });
+  }
+  if (input.path !== undefined) return dispatchPath(input, consume);
+  if (input.zipBase64 !== undefined) return dispatchZip(input, consume);
+  throw new AppError("provide exactly one of: source, path, zipBase64", 400);
+}
+
+/**
+ * Compile a Solidity contract with `forge` and return one artifact ready for
+ * `saveArtifact()`. `contractName` selects it when the file/project has several.
  */
 export async function compileSolidity(
   input: CompileArtifactRequest,
   onLog?: CompileLogger,
 ): Promise<UploadedArtifact> {
-  await assertForgeInstalled();
-  if (input.source !== undefined) {
-    return withTempProject((tmp) => {
-      const fileBasename = scaffoldStandalone(tmp, input.source!);
-      return finish(tmp, { fileBasename, sourceText: input.source }, input, onLog);
-    });
-  }
-  if (input.path !== undefined) return compileFromPath(input, onLog);
-  if (input.zipBase64 !== undefined) return compileFromZip(input, onLog);
-  throw new AppError("provide exactly one of: source, path, zipBase64", 400);
+  return withProject(input, (root, target) =>
+    runBuild(root, target, onLog, (outDir) => extractOne(outDir, root, target, input)),
+  );
+}
+
+/**
+ * Build a project once and return EVERY deployable contract as an (unsaved)
+ * artifact — the "register multiple contracts at once" inspect flow. Ignores
+ * `contractName`. Non-deployable contracts (interfaces/abstract, unlinked
+ * libraries, empty ABI) are skipped, not errored.
+ */
+export async function inspectSolidity(
+  input: CompileArtifactRequest,
+  onLog?: CompileLogger,
+): Promise<InspectedContract[]> {
+  return withProject(input, (root, target) =>
+    runBuild(root, target, onLog, (outDir) => collectDeployable(outDir, root)),
+  );
 }
 
 async function withTempProject<T>(fn: (tmp: string) => Promise<T>): Promise<T> {
@@ -497,15 +539,15 @@ async function withTempProject<T>(fn: (tmp: string) => Promise<T>): Promise<T> {
   }
 }
 
-/** Build the (already-scaffolded or real) project at `root`, extract, package.
- *  Artifacts/cache go to a private scratch dir (never the user's project dir),
- *  cleaned up afterward. */
-async function finish(
+/** Build the (already-scaffolded or real) project at `root` into a private
+ *  scratch dir (never the user's project dir), run `extract` over the output,
+ *  and clean up. Artifacts/cache are confined to the scratch dir. */
+async function runBuild<T>(
   root: string,
-  target: { fileBasename?: string; sourceText?: string; buildPath?: string },
-  input: CompileArtifactRequest,
-  onLog?: CompileLogger,
-): Promise<UploadedArtifact> {
+  target: BuildTarget,
+  onLog: CompileLogger | undefined,
+  extract: (outDir: string) => T,
+): Promise<T> {
   const scratch = makeTempDir();
   try {
     const outDir = join(scratch, "out");
@@ -516,23 +558,57 @@ async function finish(
       target.buildPath ? [target.buildPath] : [],
       onLog,
     );
-    const found = locateArtifact(outDir, {
-      fileBasename: target.fileBasename,
-      contractName: input.contractName,
-    });
-    const { abi, bytecode, natspec } = extractFromArtifact(found.jsonPath);
-    const source = target.sourceText ?? findSourceText(root, found.sourceFile);
-    const name = (input.name ?? found.contractName).trim();
-    return { name, abi, bytecode, natspec, source };
+    return extract(outDir);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
 }
 
-async function compileFromPath(
+/** Extract the single contract selected by `fileBasename`/`contractName`. */
+function extractOne(
+  outDir: string,
+  root: string,
+  target: BuildTarget,
   input: CompileArtifactRequest,
-  onLog?: CompileLogger,
-): Promise<UploadedArtifact> {
+): UploadedArtifact {
+  const found = locateArtifact(outDir, {
+    fileBasename: target.fileBasename,
+    contractName: input.contractName,
+  });
+  const { abi, bytecode, natspec } = extractFromArtifact(found.jsonPath);
+  const source = target.sourceText ?? findSourceText(root, found.sourceFile);
+  const name = (input.name ?? found.contractName).trim();
+  return { name, abi, bytecode, natspec, source };
+}
+
+/** Collect every deployable contract in the compiled output, skipping any that
+ *  aren't deployable (extractFromArtifact throws for those). Sorted by name. */
+function collectDeployable(outDir: string, root: string): InspectedContract[] {
+  const out: InspectedContract[] = [];
+  for (const sub of existsSync(outDir) ? readdirSync(outDir) : []) {
+    if (!sub.endsWith(".sol")) continue; // out/<File>.sol/ dirs only
+    const dir = join(outDir, sub);
+    if (!existsSync(dir)) continue;
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith(".json")) continue;
+      const contractName = file.slice(0, -".json".length);
+      let extracted;
+      try {
+        extracted = extractFromArtifact(join(dir, file));
+      } catch {
+        continue; // interface/abstract/unlinked-library/empty ABI → not deployable
+      }
+      const source = findSourceText(root, sub);
+      out.push({
+        artifact: { name: contractName, ...extracted, source },
+        sourceFile: sub,
+      });
+    }
+  }
+  return out.sort((a, b) => a.artifact.name.localeCompare(b.artifact.name));
+}
+
+async function dispatchPath<T>(input: CompileArtifactRequest, consume: Consume<T>): Promise<T> {
   const p = input.path!;
   if (!isAbsolute(p)) throw new AppError("path must be absolute.", 400);
   if (!existsSync(p)) throw new AppError(`path does not exist: ${p}`, 400);
@@ -543,7 +619,7 @@ async function compileFromPath(
 
   if (root) {
     // Real Foundry project: build in place (imports/libs resolve).
-    return finish(root, { fileBasename: isFile ? basename(p) : undefined }, input, onLog);
+    return consume(root, { fileBasename: isFile ? basename(p) : undefined });
   }
   // No foundry.toml (e.g. a Hardhat repo): scaffold an ephemeral project from the
   // relevant directory so relative imports (and a nearby node_modules) resolve.
@@ -555,24 +631,14 @@ async function compileFromPath(
     // Lone file: build only that file (+ its imports) so unrelated broken
     // siblings in the same directory don't fail the build. The file is copied to
     // the top of src/, so its build path is `src/<basename>`.
-    return finish(
+    return consume(
       tmp,
-      isFile
-        ? { fileBasename: basename(p), sourceText, buildPath: `src/${basename(p)}` }
-        : {},
-      input,
-      onLog,
+      isFile ? { fileBasename: basename(p), sourceText, buildPath: `src/${basename(p)}` } : {},
     );
   });
 }
 
-async function compileFromZip(
-  input: CompileArtifactRequest,
-  onLog?: CompileLogger,
-): Promise<UploadedArtifact> {
-  if (!input.contractName) {
-    throw new AppError("A zip compile needs a contractName to select.", 400);
-  }
+async function dispatchZip<T>(input: CompileArtifactRequest, consume: Consume<T>): Promise<T> {
   const buf = Buffer.from(input.zipBase64!, "base64");
   if (buf.length === 0) throw new AppError("zip is empty or not valid base64.", 400);
   if (buf.length > MAX_ZIP_BYTES) {
@@ -605,14 +671,14 @@ async function compileFromZip(
     if (existsSync(join(root, "foundry.toml"))) {
       // Trust the project's own config, but reject its exec/path escapes.
       hardenUploadedProject(root);
-      return finish(root, {}, input, onLog);
+      return consume(root, {});
     }
     // Plain .sol project (no foundry.toml): scaffold a trusted ephemeral project
     // from the extracted tree. node_modules is confined to inside the tree
     // (never the host's) so an untrusted upload can't reach outside the sandbox.
     const proj = ensureDir(join(tmp, "scaffold"));
     scaffoldFromDir(proj, root, root);
-    return finish(proj, {}, input, onLog);
+    return consume(proj, {});
   });
 }
 
