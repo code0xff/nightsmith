@@ -77,6 +77,19 @@ describe.skipIf(!canRun)("compileSolidity", () => {
     expect(a.abi.some((i: any) => i.type === "function" && i.name === "inc")).toBe(true);
   });
 
+  it("resolves the bundled OpenZeppelin for a pasted source (no install)", async () => {
+    const src = `${SPDX}pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+contract Tok is ERC20 {
+  constructor() ERC20("Tok", "TOK") { _mint(msg.sender, 1000e18); }
+}
+`;
+    const a = await compileSolidity({ source: src });
+    expect(a.name).toBe("Tok");
+    expect(a.bytecode.length).toBeGreaterThan(2);
+    expect(a.abi.some((i: any) => i.type === "function" && i.name === "transfer")).toBe(true);
+  });
+
   it("compiles a lone file even with a broken sibling in the same dir", async () => {
     const dir = makeDir({
       "interfaces/IX.sol": `${SPDX}pragma solidity ^0.8.20;\ninterface IX { function x() external view returns (uint); }\n`,

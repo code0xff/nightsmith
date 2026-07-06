@@ -167,6 +167,13 @@ contracts — for a fresh slate; it prompts for confirmation (skip with `-y`/
 `NIGHTSMITH_PORT`, stops its localnet first (best-effort). The built-in
 **MockERC20** is compiled in (not stored on disk), so it always remains.
 
+A pinned **`@openzeppelin/contracts` (v5.6.1)** is bundled with the server, so a
+pasted or lone `.sol` that does `import "@openzeppelin/contracts/…"` compiles
+without installing anything (resolved offline, no network fetch). Other
+libraries still need a project/zip that has them installed (or a nearby
+`node_modules`); a full Foundry project always uses its **own** OpenZeppelin
+version, not the bundled one.
+
 ## AI provider
 
 The planner is selected **automatically by availability**, or **pinned** with

@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type { CompileArtifactRequest, UploadedArtifact } from "@nightsmith/shared";
 import { locateForge } from "../anvil/locate.js";
@@ -341,9 +342,49 @@ function ephemeralFoundryToml(opts: {
   return lines.join("\n") + "\n";
 }
 
+interface DepConfig {
+  remappings: string[];
+  allowPaths: string[];
+}
+
+const OZ_REMAP_PREFIX = "@openzeppelin/contracts/=";
+
+/**
+ * Remapping + allow_path for the pinned `@openzeppelin/contracts` bundled as a
+ * server dependency, so a pasted/loose `.sol` importing `@openzeppelin/…`
+ * resolves without the user installing anything. Resolved once (realpath, so a
+ * pnpm symlink points at the store). Returns null if it can't be resolved — the
+ * feature just no-ops then. The path is our own pinned package (not user input),
+ * so allow_path'ing it is safe.
+ */
+let ozConfigCache: DepConfig | null | undefined;
+function bundledOzConfig(): DepConfig | null {
+  if (ozConfigCache !== undefined) return ozConfigCache;
+  try {
+    const require = createRequire(import.meta.url);
+    const dir = dirname(require.resolve("@openzeppelin/contracts/package.json"));
+    ozConfigCache = { remappings: [`${OZ_REMAP_PREFIX}${dir}/`], allowPaths: [dir] };
+  } catch {
+    ozConfigCache = null;
+  }
+  return ozConfigCache;
+}
+
+/** Fold the bundled OZ remapping into a project's config, but only when the
+ *  project doesn't already provide its own `@openzeppelin/contracts` mapping. */
+function withBundledOz(base: DepConfig): DepConfig {
+  const oz = bundledOzConfig();
+  if (!oz || base.remappings.some((r) => r.startsWith(OZ_REMAP_PREFIX))) return base;
+  return {
+    remappings: [...base.remappings, ...oz.remappings],
+    allowPaths: [...base.allowPaths, ...oz.allowPaths],
+  };
+}
+
 /** Scaffold a throwaway Foundry project holding a single pasted source file. */
 function scaffoldStandalone(tmp: string, source: string): string {
-  writeFileSync(join(tmp, "foundry.toml"), ephemeralFoundryToml({}));
+  const { remappings, allowPaths } = withBundledOz({ remappings: [], allowPaths: [] });
+  writeFileSync(join(tmp, "foundry.toml"), ephemeralFoundryToml({ remappings, allowPaths }));
   const src = ensureDir(join(tmp, "src"));
   writeFileSync(join(src, "Source.sol"), source);
   return "Source.sol";
@@ -408,13 +449,13 @@ function nodeModulesRemappings(nmDir: string, target: string): string[] {
  */
 function scaffoldFromDir(tmp: string, srcDir: string, nmBoundary?: string): void {
   const nm = findNodeModules(srcDir, nmBoundary);
+  const { remappings, allowPaths } = withBundledOz({
+    remappings: nm ? nodeModulesRemappings(nm, nm) : [],
+    allowPaths: nm ? [nm] : [],
+  });
   writeFileSync(
     join(tmp, "foundry.toml"),
-    ephemeralFoundryToml({
-      libs: nm ? [nm] : [],
-      remappings: nm ? nodeModulesRemappings(nm, nm) : [],
-      allowPaths: nm ? [nm] : [],
-    }),
+    ephemeralFoundryToml({ libs: nm ? [nm] : [], remappings, allowPaths }),
   );
   cpSync(srcDir, join(tmp, "src"), {
     recursive: true,
