@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ArrowLeftRight, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,19 @@ import { formatTime, truncateHex } from "@/lib/utils";
 export function TransactionsPanel() {
   const transactions = useAppStore((s) => s.world.transactions);
   const scenario = useAppStore((s) => s.world.scenario);
+  const accounts = useAppStore((s) => s.world.accounts);
+  const contracts = useAppStore((s) => s.world.contracts);
+
+  // Resolve a tx address to a readable account name / contract id, so the
+  // from→to route reads as "Alice → usdc" rather than raw hex. Unknown
+  // addresses fall back to a truncated hex; a missing `to` (e.g. deploy) → "—".
+  const label = useMemo(() => {
+    const byAddr = new Map<string, string>();
+    for (const a of accounts) byAddr.set(a.address.toLowerCase(), a.name);
+    for (const c of contracts) byAddr.set(c.address.toLowerCase(), c.id);
+    return (addr?: string) =>
+      addr ? (byAddr.get(addr.toLowerCase()) ?? truncateHex(addr)) : "—";
+  }, [accounts, contracts]);
 
   return (
     <Card className="flex min-h-0 w-full flex-col">
@@ -61,6 +75,7 @@ export function TransactionsPanel() {
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="font-normal">time</th>
+                <th className="font-normal">from → to</th>
                 <th className="font-normal">fn</th>
                 <th className="font-normal">status</th>
                 <th className="font-normal">tx</th>
@@ -72,6 +87,11 @@ export function TransactionsPanel() {
                 <tr key={tx.hash} className="border-t">
                   <td className="py-1 font-mono text-xs text-muted-foreground">
                     {formatTime(tx.ts)}
+                  </td>
+                  <td className="whitespace-nowrap py-1 pr-2">
+                    <span title={tx.from}>{label(tx.from)}</span>
+                    <span className="text-muted-foreground"> → </span>
+                    <span title={tx.to}>{label(tx.to)}</span>
                   </td>
                   <td className="py-1 pr-2">{tx.fn ?? "—"}</td>
                   <td className="py-1">
