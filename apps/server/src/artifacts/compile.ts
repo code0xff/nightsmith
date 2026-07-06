@@ -122,7 +122,25 @@ async function forgeBuild(
   // fail the build (only relevant for the lone-file scaffold).
   const proc = execa(
     locateForge(),
-    ["build", ...buildPaths, "--root", root, "--extra-output", "userdoc", "devdoc"],
+    // Skip test/script: we only extract deployable src artifacts, and these
+    // commonly import forge-std (often from a monorepo-level `dependencies/`
+    // outside --root) whose absence would otherwise fail the whole build even
+    // when the target contract compiles fine. Match the dirs (catches plain
+    // `.sol` test helpers like TestBase.sol) and the .t.sol/.s.sol suffixes.
+    [
+      "build",
+      ...buildPaths,
+      "--root",
+      root,
+      "--skip",
+      "test/**",
+      "script/**",
+      "*.t.sol",
+      "*.s.sol",
+      "--extra-output",
+      "userdoc",
+      "devdoc",
+    ],
     {
       timeout: FORGE_TIMEOUT_MS,
       reject: false,
