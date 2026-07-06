@@ -87,7 +87,7 @@ function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnin
     return;
   }
 
-  if (action.type === "call") {
+  if (action.type === "call" || action.type === "read") {
     const fns = findFunctions(abi, action.function);
     if (fns.length === 0) {
       warnings.push(`${action.contractId}.${action.function}() is not in the contract ABI`);
@@ -101,13 +101,16 @@ function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnin
     const inputs = fn.inputs ?? [];
     const err = argError(inputs, action.args);
     if (err) warnings.push(`${action.contractId}.${action.function}(): ${err}`);
-    const badAddrs = badAddressArgs(inputs, action.args);
+    // `call` args are literal (no name resolution), so an address arg must be a
+    // 0x literal. `read` resolves named accounts, so this check doesn't apply.
+    const badAddrs = action.type === "call" ? badAddressArgs(inputs, action.args) : [];
     if (badAddrs.length > 0) {
       warnings.push(
         `${action.contractId}.${action.function}(): ${badAddrs.join(", ")} must be a literal 0x address`,
       );
     }
-    if (action.value && fn.stateMutability !== "payable") {
+    // `read` targets a view/pure fn and sends no ETH — only `call` has `value`.
+    if (action.type === "call" && action.value && fn.stateMutability !== "payable") {
       warnings.push(
         `${action.contractId}.${action.function}() is not payable but the action sends ETH — it will revert`,
       );

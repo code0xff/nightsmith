@@ -176,6 +176,21 @@ export const MineAction = z.object({
 });
 export type MineAction = z.infer<typeof MineAction>;
 
+/**
+ * Read a view/pure function and print its result to the log console — a
+ * non-mutating query (no assertion, no transaction). Deterministic on replay.
+ */
+export const ReadAction = z.object({
+  type: z.literal("read"),
+  contractId: Identifier,
+  /** View/pure function name in the contract's ABI. */
+  function: z.string().min(1),
+  args: z.array(ArgValue).default([]),
+  /** Optional human-readable label for the log line (e.g. "Bob's USDC balance"). */
+  label: z.string().optional(),
+});
+export type ReadAction = z.infer<typeof ReadAction>;
+
 export const Action = z.discriminatedUnion("type", [
   DeployContractAction,
   MintAction,
@@ -183,6 +198,7 @@ export const Action = z.discriminatedUnion("type", [
   ApproveAction,
   MineAction,
   CallAction,
+  ReadAction,
 ]);
 export type Action = z.infer<typeof Action>;
 export type ActionType = Action["type"];

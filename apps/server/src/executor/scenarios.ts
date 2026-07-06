@@ -1,7 +1,7 @@
 import type { Action, MineAction, WorldManifest } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { mineBlocks, setNextBlockTimestamp } from "../anvil/snapshot.js";
-import { callFunction } from "./calls.js";
+import { callFunction, readAndLog } from "./calls.js";
 import { deployArtifact, deployMockErc20 } from "./contracts.js";
 import { approve, mint, refreshAllTokenBalances, transfer } from "./tokens.js";
 
@@ -20,6 +20,8 @@ export function describeAction(action: Action): string {
       return `Mine ${action.blocks} block${action.blocks === 1 ? "" : "s"}${action.secondsDelta ? `, +${action.secondsDelta}s` : ""}`;
     case "call":
       return `Call ${action.contractId}.${action.function}(${action.args.length ? "…" : ""}) by ${action.from}`;
+    case "read":
+      return `Read ${action.contractId}.${action.function}(${action.args.length ? "…" : ""})`;
   }
 }
 
@@ -76,6 +78,9 @@ async function runSingleAction(
       return;
     case "call":
       await callFunction(runtime, action);
+      return;
+    case "read":
+      await readAndLog(runtime, action);
       return;
   }
 }

@@ -38,6 +38,8 @@ function describeAction(a: Action): string {
       return `Mine ${a.blocks} block(s)${a.secondsDelta ? ` (+${a.secondsDelta}s)` : ""}`;
     case "call":
       return `Call ${a.contractId}.${a.function}() by ${a.from}`;
+    case "read":
+      return `Read ${a.contractId}.${a.function}()`;
   }
 }
 

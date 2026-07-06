@@ -1,7 +1,8 @@
 import type { Abi, AbiFunction } from "viem";
-import type { ArgValue, CallAction } from "@nightsmith/shared";
+import type { ArgValue, CallAction, ReadAction } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { coerceArgs } from "./args.js";
+import { normalizeTyped } from "./format.js";
 import { runWrite } from "./sender.js";
 import { toWei } from "./units.js";
 
@@ -43,6 +44,25 @@ export async function callFunction(runtime: Runtime, action: CallAction): Promis
     throw new Error(`call ${action.function}() on ${action.contractId} reverted`);
   }
   runtime.log("success", `Called ${action.function}() on ${action.contractId} (from ${action.from})`, "executor");
+}
+
+/** Read a view/pure function and print its formatted result to the log console
+ *  — a non-mutating query. No transaction is recorded. */
+export async function readAndLog(runtime: Runtime, action: ReadAction): Promise<void> {
+  const fn = abiFunction(runtime.getContract(action.contractId).abi, action.function);
+  // Resolve a named account in a top-level address arg to its address, so
+  // `balanceOf(["Bob"])` works (a literal 0x passes through unchanged).
+  const args = action.args.map((a, i) =>
+    fn.inputs[i]?.type === "address" && typeof a === "string" ? runtime.resolveAddress(a) : a,
+  );
+  const raw = await readFunction(runtime, action.contractId, action.function, args);
+  const outType = fn.outputs.length === 1 ? fn.outputs[0]!.type : undefined;
+  const value = normalizeTyped(raw, outType);
+  const argsText = action.args
+    .map((a) => (a !== null && typeof a === "object" ? JSON.stringify(a) : String(a)))
+    .join(", ");
+  const call = `${action.contractId}.${action.function}(${argsText})`;
+  runtime.log("info", `🔎 ${action.label ? `${action.label} — ` : ""}${call} → ${value}`, "read");
 }
 
 /** The (single, non-overloaded) ABI function entry for a contract — for typing results. */

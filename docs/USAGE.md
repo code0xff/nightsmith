@@ -99,6 +99,8 @@ process (it streams logs/state over `ws://localhost:4040/ws`).
 - "Deploy my MyVault contract, have Alice deposit 100, and verify a Deposit event"
 - "Advance time by 30 days, then check the vesting balance"
 - "Send 1000 USDC from 0x… (impersonate that address) to Bob"
+- "Show me usdc's total supply" / "What's Bob's USDC balance?" — a `read` query
+  whose result is printed to the log console (no assertion, no state change)
 - "Replay the last scenario"
 - "Explain why the last transaction reverted"
 - "Stop the localnet"
