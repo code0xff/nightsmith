@@ -10,7 +10,13 @@ import type { AiProvider, PlanInput } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = process.env.NIGHTSMITH_OPENAI_MODEL ?? "gpt-5.5";
-const REQUEST_TIMEOUT_MS = 60_000;
+// Reasoning models (e.g. gpt-5.5) can take well over a minute; a too-short
+// timeout aborts a request that would have succeeded and forces a fallback.
+// Overridable via NIGHTSMITH_OPENAI_TIMEOUT_MS.
+const REQUEST_TIMEOUT_MS = (() => {
+  const raw = Number(process.env.NIGHTSMITH_OPENAI_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : 180_000;
+})();
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";

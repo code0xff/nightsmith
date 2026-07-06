@@ -200,6 +200,9 @@ environment — Nightsmith never stores it on disk or accepts it through the UI:
 - `OPENAI_API_KEY` — enables the OpenAI provider (in your `.env` or shell), then
   restart the server.
 - Model: `NIGHTSMITH_OPENAI_MODEL` (default `gpt-5.5`).
+- Timeout: `NIGHTSMITH_OPENAI_TIMEOUT_MS` (default `180000`). The first plan (a
+  reasoning model) can take a while; the log console shows a "Still working…"
+  heartbeat and the prompt box a live elapsed timer, and you can **Stop** anytime.
 - Model for the Claude CLI fallback: `NIGHTSMITH_CLAUDE_MODEL` (optional;
   defaults to the CLI's own default model).
 
@@ -228,6 +231,7 @@ plan; the deterministic executor still runs it after validation and confirmation
 | `NIGHTSMITH_AI_PROVIDER` | — | Pin the planner (`mock`/`openai`/`codex`/`claude`); unset = auto by availability |
 | `OPENAI_API_KEY` | — | OpenAI key (enables the OpenAI provider; overrides the stored key) |
 | `NIGHTSMITH_OPENAI_MODEL` | `gpt-5.5` | OpenAI model for planning |
+| `NIGHTSMITH_OPENAI_TIMEOUT_MS` | `180000` | Per-request OpenAI timeout (raise for slow reasoning models; a too-short value times out and falls back) |
 | `NIGHTSMITH_CLAUDE_MODEL` | — | Model for the Claude CLI planner fallback (alias or full name; defaults to the CLI's own default) |
 | `NIGHTSMITH_ALLOW_FORK` | `false` | Allow forking a remote chain |
 | `NIGHTSMITH_ALLOW_BROADCAST` | `false` | Allow broadcasting beyond the local node |

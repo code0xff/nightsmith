@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SendHorizontal, Sparkles, Square } from "lucide-react";
+import { Loader2, SendHorizontal, Sparkles, Square } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ const EXAMPLES = [
 
 export function PromptBox() {
   const [value, setValue] = useState("");
+  const [elapsed, setElapsed] = useState(0);
   const busy = useAppStore((s) => s.busy);
   const planning = useAppStore((s) => s.planning);
   const promptResetSignal = useAppStore((s) => s.promptResetSignal);
@@ -23,6 +24,19 @@ export function PromptBox() {
   useEffect(() => {
     if (promptResetSignal > 0) setValue("");
   }, [promptResetSignal]);
+
+  // Tick an elapsed-seconds counter while planning — a live "still working"
+  // signal so a long reasoning-model plan doesn't look hung.
+  useEffect(() => {
+    if (!planning) {
+      setElapsed(0);
+      return;
+    }
+    setElapsed(0);
+    const started = Date.now();
+    const id = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [planning]);
 
   const submit = () => {
     submitPrompt(value);
@@ -69,11 +83,17 @@ export function PromptBox() {
             </button>
           ))}
         </div>
+        {planning && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            Generating a plan… {elapsed}s — a reasoning model can take a while; you can Stop anytime.
+          </p>
+        )}
         <div className="flex justify-end">
           {planning ? (
             <Button variant="destructive" onClick={cancelPlanning}>
               <Square />
-              Stop
+              Stop ({elapsed}s)
             </Button>
           ) : (
             <Button onClick={submit} disabled={busy || !value.trim()}>

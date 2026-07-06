@@ -36,6 +36,17 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
     reply.raw.on("close", onClose);
 
     runtime.setExecution("planning", "Generating plan…");
+    // Liveness signal: a start line + a heartbeat every 15s, so a long
+    // reasoning-model plan doesn't look hung in the log console.
+    runtime.log(
+      "info",
+      "Generating a plan… (a complex request or a reasoning model can take a while)",
+      "planner",
+    );
+    const startedAt = Date.now();
+    const heartbeat = setInterval(() => {
+      runtime.log("info", `Still working… (${Math.round((Date.now() - startedAt) / 1000)}s)`, "planner");
+    }, 15_000);
     try {
       const { plan, provider } = await generatePlan(
         {
@@ -74,6 +85,7 @@ export function registerPromptRoutes(app: FastifyInstance, runtime: Runtime): vo
       }
       throw err;
     } finally {
+      clearInterval(heartbeat);
       reply.raw.off("close", onClose);
     }
   });
