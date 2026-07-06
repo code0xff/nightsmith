@@ -159,6 +159,12 @@ export function ContractsPanel({
     setSelected(new Set());
   };
 
+  /** Close the Add dialog and clear its form, so reopening starts fresh. */
+  const closeDialog = () => {
+    setOpen(false);
+    reset();
+  };
+
   const describeErr = (err: unknown) =>
     err instanceof ApiRequestError ? err.message : String(err);
 
@@ -325,7 +331,7 @@ export function ContractsPanel({
 
       <Dialog
         open={open}
-        onClose={() => !saving && setOpen(false)}
+        onClose={() => !saving && closeDialog()}
         title="Add a contract"
         description="Compile a Solidity source/project, or upload an already-compiled artifact."
       >
@@ -505,7 +511,7 @@ export function ContractsPanel({
             )}
           </p>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
+            <Button variant="ghost" onClick={closeDialog} disabled={saving}>
               Cancel
             </Button>
             {mode === "json" ? (
