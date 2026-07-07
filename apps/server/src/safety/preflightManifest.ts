@@ -24,7 +24,11 @@ export function preflightManifest(manifest: WorldManifest): string[] {
     });
   }
 
-  for (const action of manifest.actions) checkAction(action, contracts, warnings);
+  // Declared account names resolve to addresses at run time, so they're valid
+  // wherever a literal address is otherwise expected (call/read address args).
+  const accountNames = new Set(manifest.accounts.map((a) => a.name));
+
+  for (const action of manifest.actions) checkAction(action, contracts, warnings, accountNames);
   for (const assertion of manifest.assertions) checkAssertion(assertion, contracts, warnings);
   return warnings;
 }
@@ -51,12 +55,24 @@ function argError(inputs: AbiParameter[], args: readonly unknown[]): string | nu
   }
 }
 
-/** Warn about `address`-typed args that aren't literal 0x addresses (call args aren't name-resolved). */
-function badAddressArgs(inputs: AbiParameter[], args: readonly unknown[]): string[] {
+/**
+ * Warn about `address`/`address[]` args that are neither a declared account
+ * name (resolved to an address at run time) nor a literal 0x address — matching
+ * the runtime resolver's coverage (top-level address + address[] elements).
+ */
+function badAddressArgs(
+  inputs: AbiParameter[],
+  args: readonly unknown[],
+  accountNames: Set<string>,
+): string[] {
   const bad: string[] = [];
+  const okAddr = (v: unknown) => typeof v === "string" && (accountNames.has(v) || isAddress(v));
   inputs.forEach((p, i) => {
-    if (p.type === "address" && !(typeof args[i] === "string" && isAddress(args[i] as string))) {
-      bad.push(p.name || `arg ${i}`);
+    const v = args[i];
+    if (p.type === "address") {
+      if (!okAddr(v)) bad.push(p.name || `arg ${i}`);
+    } else if (p.type === "address[]" && Array.isArray(v)) {
+      if (!v.every(okAddr)) bad.push(p.name || `arg ${i}`);
     }
   });
   return bad;
@@ -70,7 +86,12 @@ function findEvents(abi: AbiItem[], name: string): AbiItem[] {
   return abi.filter((i) => i.type === "event" && i.name === name);
 }
 
-function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnings: string[]): void {
+function checkAction(
+  action: Action,
+  contracts: Map<string, ResolvedAbi>,
+  warnings: string[],
+  accountNames: Set<string>,
+): void {
   if (!("contractId" in action)) return; // chain-control actions (mine) target no contract
   const entry = contracts.get(action.contractId);
   if (!entry) return; // unknown contract is caught by validateManifest already
@@ -101,12 +122,12 @@ function checkAction(action: Action, contracts: Map<string, ResolvedAbi>, warnin
     const inputs = fn.inputs ?? [];
     const err = argError(inputs, action.args);
     if (err) warnings.push(`${action.contractId}.${action.function}(): ${err}`);
-    // `call` args are literal (no name resolution), so an address arg must be a
-    // 0x literal. `read` resolves named accounts, so this check doesn't apply.
-    const badAddrs = action.type === "call" ? badAddressArgs(inputs, action.args) : [];
+    // call/read resolve named accounts in address args at run time, so only warn
+    // for a value that's neither a declared account name nor a literal 0x.
+    const badAddrs = badAddressArgs(inputs, action.args, accountNames);
     if (badAddrs.length > 0) {
       warnings.push(
-        `${action.contractId}.${action.function}(): ${badAddrs.join(", ")} must be a literal 0x address`,
+        `${action.contractId}.${action.function}(): ${badAddrs.join(", ")} must be a named account or a literal 0x address`,
       );
     }
     // `read` targets a view/pure fn and sends no ETH — only `call` has `value`.

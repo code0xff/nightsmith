@@ -16,12 +16,33 @@ function abiFunction(abi: Abi, name: string): AbiFunction {
   return fns[0]!;
 }
 
+/**
+ * Resolve named accounts to addresses in address-typed args, so a function call
+ * can reference "Alice" instead of a raw 0x. Covers top-level `address` (string)
+ * and `address[]` (array of strings); ints/tuples/nested arrays pass through.
+ * A literal 0x is returned as-is; an unknown name throws via `resolveAddress`.
+ */
+export function resolveNamedAddressArgs(
+  runtime: Runtime,
+  inputs: readonly { type: string }[],
+  args: ArgValue[],
+): ArgValue[] {
+  return args.map((arg, i) => {
+    const type = inputs[i]?.type;
+    if (type === "address" && typeof arg === "string") return runtime.resolveAddress(arg);
+    if (type === "address[]" && Array.isArray(arg)) {
+      return arg.map((el) => (typeof el === "string" ? runtime.resolveAddress(el) : el));
+    }
+    return arg;
+  });
+}
+
 /** Execute a state-changing function call. `from` may be a named signer or a
  *  literal address (impersonated). */
 export async function callFunction(runtime: Runtime, action: CallAction): Promise<void> {
   const contract = runtime.getContract(action.contractId);
   const fn = abiFunction(contract.abi, action.function);
-  const args = coerceArgs(fn.inputs, action.args);
+  const args = coerceArgs(fn.inputs, resolveNamedAddressArgs(runtime, fn.inputs, action.args));
 
   const { hash, receipt, from } = await runWrite(runtime, action.from, {
     address: contract.address,
@@ -50,11 +71,8 @@ export async function callFunction(runtime: Runtime, action: CallAction): Promis
  *  — a non-mutating query. No transaction is recorded. */
 export async function readAndLog(runtime: Runtime, action: ReadAction): Promise<void> {
   const fn = abiFunction(runtime.getContract(action.contractId).abi, action.function);
-  // Resolve a named account in a top-level address arg to its address, so
-  // `balanceOf(["Bob"])` works (a literal 0x passes through unchanged).
-  const args = action.args.map((a, i) =>
-    fn.inputs[i]?.type === "address" && typeof a === "string" ? runtime.resolveAddress(a) : a,
-  );
+  // Resolve named accounts in address args, so `balanceOf(["Bob"])` works.
+  const args = resolveNamedAddressArgs(runtime, fn.inputs, action.args);
   const raw = await readFunction(runtime, action.contractId, action.function, args);
   const outType = fn.outputs.length === 1 ? fn.outputs[0]!.type : undefined;
   const value = normalizeTyped(raw, outType);

@@ -1,7 +1,7 @@
 import { isAddress, type Assertion, type AssertionResult } from "@nightsmith/shared";
 import type { Runtime } from "../runtime/runtime.js";
 import { maxUint256, type AbiEvent } from "viem";
-import { functionAbi, readFunction } from "./calls.js";
+import { functionAbi, readFunction, resolveNamedAddressArgs } from "./calls.js";
 import { normalizeTyped } from "./format.js";
 import { readAllowanceRaw, readTokenBalanceRaw } from "./tokens.js";
 import { fromTokenUnits, fromWei, toTokenUnits, toTokenUnitsOrMax, toWei } from "./units.js";
@@ -73,7 +73,7 @@ export async function evaluateAssertion(
         runtime,
         assertion.contractId,
         assertion.function,
-        assertion.args,
+        resolveNamedAddressArgs(runtime, fn.inputs, assertion.args),
       );
       const actual = normalizeTyped(raw, outType);
       const expected = normalizeTyped(assertion.expected, outType);
